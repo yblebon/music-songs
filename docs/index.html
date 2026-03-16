@@ -1,289 +1,715 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top 50 US Songs - Weekly Chart</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        header {
-            background-color: #1a73e8;
-            color: white;
-            text-align: center;
-            padding: 2rem;
-        }
-        h1 {
-            margin: 0;
-            font-size: 2.5rem;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        th, td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #1a73e8;
-            color: white;
-            cursor: pointer;
-            position: relative;
-        }
-        th.sortable:hover {
-            background-color: #1557b0;
-        }
-        th .sort-indicator {
-            display: inline-block;
-            margin-left: 5px;
-            font-size: 0.8em;
-        }
-        tr:hover {
-            background-color: #f1f1f1;
-        }
-        .rank {
-            width: 10%;
-            font-weight: bold;
-        }
-        .song-title {
-            width: 25%;
-        }
-        .artist {
-            width: 25%;
-        }
-        .weeks {
-            width: 15%;
-        }
-        .peak {
-            width: 15%;
-        }
-        .lyrics {
-            width: 10%;
-        }
-        .error {
-            color: red;
-            text-align: center;
-            margin: 20px;
-        }
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: #1a73e8;
-            color: white;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-        }
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 1.5rem;
-            }
-            th, td {
-                padding: 10px;
-                font-size: 0.9rem;
-            }
-            .rank, .weeks, .peak, .lyrics {
-                width: 20%;
-            }
-            .song-title, .artist {
-                width: 25%;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hot 100 — Weekly Chart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --bg:        #0c0c0e;
+      --surface:   #131316;
+      --border:    #1f1f26;
+      --border-hi: #2e2e3a;
+      --text:      #e8e8f0;
+      --muted:     #6b6b82;
+      --gold:      #f0c040;
+      --gold-dim:  #a8841e;
+      --red:       #e8445a;
+      --green:     #3dd68c;
+      --row-hover: #17171d;
+
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+      --font-body:    'DM Sans', sans-serif;
+
+      --radius: 4px;
+      --ease:   cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── RESET ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── GRAIN OVERLAY ───────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: .025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    /* ── HEADER ──────────────────────────────────────────── */
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 3.5rem 2rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .6rem;
+      text-align: center;
+      background:
+        radial-gradient(ellipse 70% 200px at 50% -40px, rgba(240,192,64,.08) 0%, transparent 70%);
+    }
+
+    .header-eyebrow {
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 8vw, 6.5rem);
+      letter-spacing: .04em;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    h1 span {
+      color: var(--gold);
+    }
+
+    .header-date {
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      color: var(--muted);
+      letter-spacing: .12em;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 6rem;
+    }
+
+    /* ── LOADING STATE ───────────────────────────────────── */
+    .loading-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+      padding: 5rem 0;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--border-hi);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-label {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      letter-spacing: .12em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* ── ERROR ───────────────────────────────────────────── */
+    .error-wrap {
+      display: none;
+      align-items: center;
+      gap: .75rem;
+      padding: 1rem 1.25rem;
+      border: 1px solid rgba(232,68,90,.3);
+      border-radius: var(--radius);
+      background: rgba(232,68,90,.06);
+      color: var(--red);
+      font-size: .85rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .error-wrap.visible { display: flex; }
+
+    /* ── CONTROLS ROW ────────────────────────────────────── */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .result-count {
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      letter-spacing: .1em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .result-count strong {
+      color: var(--gold);
+      font-weight: 500;
+    }
+
+    /* ── TABLE WRAPPER ───────────────────────────────────── */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* ── TABLE ───────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+
+    caption {
+      caption-side: top;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+
+    thead tr {
+      border-bottom: 1px solid var(--border-hi);
+    }
+
+    th {
+      background: var(--surface);
+      padding: .85rem 1rem;
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      font-weight: 500;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: left;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    th[aria-sort] { color: var(--gold); }
+
+    th.sortable {
+      cursor: pointer;
+      transition: color .15s var(--ease);
+    }
+
+    th.sortable:hover { color: var(--text); }
+
+    th.sortable:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: -2px;
+    }
+
+    .sort-icon {
+      display: inline-block;
+      margin-left: .35rem;
+      opacity: .4;
+      transition: opacity .15s var(--ease), transform .15s var(--ease);
+      font-style: normal;
+    }
+
+    th[aria-sort] .sort-icon { opacity: 1; }
+    th[aria-sort="descending"] .sort-icon { transform: scaleY(-1); }
+
+    /* ── ROWS ────────────────────────────────────────────── */
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .12s var(--ease);
+      animation: rowIn .3s var(--ease) both;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--row-hover); }
+
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* stagger the first 20 rows */
+    tbody tr:nth-child(1)  { animation-delay: .02s }
+    tbody tr:nth-child(2)  { animation-delay: .04s }
+    tbody tr:nth-child(3)  { animation-delay: .06s }
+    tbody tr:nth-child(4)  { animation-delay: .08s }
+    tbody tr:nth-child(5)  { animation-delay: .10s }
+    tbody tr:nth-child(6)  { animation-delay: .12s }
+    tbody tr:nth-child(7)  { animation-delay: .14s }
+    tbody tr:nth-child(8)  { animation-delay: .16s }
+    tbody tr:nth-child(9)  { animation-delay: .18s }
+    tbody tr:nth-child(10) { animation-delay: .20s }
+    tbody tr:nth-child(11) { animation-delay: .22s }
+    tbody tr:nth-child(12) { animation-delay: .24s }
+    tbody tr:nth-child(13) { animation-delay: .26s }
+    tbody tr:nth-child(14) { animation-delay: .28s }
+    tbody tr:nth-child(15) { animation-delay: .30s }
+    tbody tr:nth-child(16) { animation-delay: .32s }
+    tbody tr:nth-child(17) { animation-delay: .34s }
+    tbody tr:nth-child(18) { animation-delay: .36s }
+    tbody tr:nth-child(19) { animation-delay: .38s }
+    tbody tr:nth-child(20) { animation-delay: .40s }
+
+    td {
+      padding: .85rem 1rem;
+      vertical-align: middle;
+    }
+
+    /* rank column */
+    .col-rank {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      letter-spacing: .03em;
+      color: var(--muted);
+      width: 4rem;
+      min-width: 4rem;
+    }
+
+    tr:nth-child(1) .col-rank { color: var(--gold); }
+    tr:nth-child(2) .col-rank { color: #c0c0c8; }
+    tr:nth-child(3) .col-rank { color: #b87040; }
+
+    /* song column */
+    .col-song {
+      width: 30%;
+    }
+
+    .song-title {
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.3;
+      display: block;
+    }
+
+    /* artist column */
+    .col-artist {
+      color: var(--muted);
+      width: 25%;
+      font-size: .84rem;
+    }
+
+    /* weeks / peak */
+    .col-weeks,
+    .col-peak {
+      font-family: var(--font-mono);
+      font-size: .78rem;
+      color: var(--muted);
+      text-align: center;
+      width: 8rem;
+    }
+
+    .peak-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      height: 1.5rem;
+      padding: 0 .4rem;
+      border-radius: 3px;
+      font-size: .72rem;
+    }
+
+    .peak-badge.peak-1 {
+      background: rgba(240,192,64,.15);
+      color: var(--gold);
+      border: 1px solid rgba(240,192,64,.3);
+    }
+
+    /* lyrics link */
+    .col-lyrics {
+      width: 5rem;
+      text-align: center;
+    }
+
+    .lyrics-link {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      padding: .3rem .55rem;
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius);
+      transition: color .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease);
+    }
+
+    .lyrics-link:hover,
+    .lyrics-link:focus-visible {
+      color: var(--gold);
+      border-color: rgba(240,192,64,.4);
+      background: rgba(240,192,64,.06);
+      outline: none;
+    }
+
+    /* ── FOOTER ──────────────────────────────────────────── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-copy {
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      letter-spacing: .08em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .footer-source {
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      letter-spacing: .06em;
+      color: var(--muted);
+    }
+
+    .footer-source a {
+      color: var(--gold-dim);
+      text-decoration: none;
+      transition: color .15s var(--ease);
+    }
+
+    .footer-source a:hover { color: var(--gold); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .col-weeks, .col-peak { display: none; }
+      .col-artist { display: none; }
+      .col-rank { width: 3rem; min-width: 3rem; }
+      h1 { font-size: clamp(2.5rem, 12vw, 4rem); }
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <h1 id="chart-title">Top 50 US Songs - Weekly Chart</h1>
-    </header>
-    <div class="container">
-        <table id="chart-table">
-            <thead>
-                <tr>
-                    <th class="sortable rank" data-key="this_week">Rank<span class="sort-indicator"></span></th>
-                    <th class="sortable song-title" data-key="song">Song Title<span class="sort-indicator"></span></th>
-                    <th class="sortable artist" data-key="artist">Artist<span class="sort-indicator"></span></th>
-                    <th class="sortable weeks" data-key="weeks_on_chart">Weeks on Chart<span class="sort-indicator"></span></th>
-                    <th class="sortable peak" data-key="peak_position">Peak Position<span class="sort-indicator"></span></th>
-                    <th class="lyrics">Lyrics</th>
-                </tr>
-            </thead>
-            <tbody id="chart-body">
-                <!-- Data will be populated by JavaScript -->
-            </tbody>
-        </table>
-        <p id="error-message" class="error" style="display: none;"></p>
-        <p><em>Data sourced from Billboard Hot 100. For the full list, visit <a href="https://www.billboard.com/charts/hot-100/">Billboard Hot 100</a>. Lyrics links provided by Genius.</em></p>
+
+  <header>
+    <p class="header-eyebrow">Billboard</p>
+    <h1>HOT <span>100</span></h1>
+    <p class="header-date" id="chart-date">Loading chart…</p>
+  </header>
+
+  <div class="container">
+
+    <div id="error-wrap" class="error-wrap" role="alert" aria-live="assertive">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="7.25" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 4.5v4M8 10.5v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span id="error-text"></span>
     </div>
-    <footer>
-        <p>Chart updated weekly based on streaming, airplay, and sales data. © 2025</p>
-    </footer>
 
-    <script>
-        // Global variable to store chart data
-        let chartData = [];
-        let sortKey = 'this_week';
-        let sortDirection = 1; // 1 for ascending, -1 for descending
+    <div id="loading-wrap" class="loading-wrap" aria-label="Loading chart data">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-label">Fetching this week's chart…</p>
+    </div>
 
-        // Function to format string for Genius URL
-        function formatForGenius(str) {
-            return str
-                .toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-                .replace(/\s+/g, '-')          // Replace spaces with hyphens
-                .replace(/-+/g, '-');          // Remove duplicate hyphens
+    <div id="chart-content" style="display:none">
+      <div class="controls">
+        <p class="result-count" id="result-count" aria-live="polite"></p>
+      </div>
+
+      <div class="table-wrap">
+        <table id="chart-table" aria-label="Billboard Hot 100 weekly chart">
+          <caption>Billboard Hot 100 — weekly ranking of top US songs by streaming, airplay and sales</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="sortable col-rank"
+                  data-key="this_week" tabindex="0"
+                  aria-sort="ascending">#<i class="sort-icon" aria-hidden="true">↑</i></th>
+              <th scope="col" class="sortable col-song"
+                  data-key="song" tabindex="0"
+                  aria-sort="none">Song<i class="sort-icon" aria-hidden="true">↑</i></th>
+              <th scope="col" class="sortable col-artist"
+                  data-key="artist" tabindex="0"
+                  aria-sort="none">Artist<i class="sort-icon" aria-hidden="true">↑</i></th>
+              <th scope="col" class="sortable col-weeks"
+                  data-key="weeks_on_chart" tabindex="0"
+                  aria-sort="none">Wks<i class="sort-icon" aria-hidden="true">↑</i></th>
+              <th scope="col" class="sortable col-peak"
+                  data-key="peak_position" tabindex="0"
+                  aria-sort="none">Peak<i class="sort-icon" aria-hidden="true">↑</i></th>
+              <th scope="col" class="col-lyrics">Lyrics</th>
+            </tr>
+          </thead>
+          <tbody id="chart-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p class="footer-copy">© <span id="copy-year"></span> Hot 100 Chart Viewer</p>
+    <p class="footer-source">
+      Data: <a href="https://www.billboard.com/charts/hot-100/" target="_blank" rel="noopener noreferrer">Billboard Hot 100</a>
+      · Lyrics: <a href="https://genius.com" target="_blank" rel="noopener noreferrer">Genius</a>
+    </p>
+  </footer>
+
+  <script>
+    /* ── CONSTANTS ─────────────────────────────────────── */
+    const ASC  = 1;
+    const DESC = -1;
+
+    /* ── STATE ──────────────────────────────────────────── */
+    const state = {
+      data:      [],
+      sortKey:   'this_week',
+      sortDir:   ASC,
+    };
+
+    /* ── DOM REFS ───────────────────────────────────────── */
+    const $ = id => document.getElementById(id);
+    const chartBody    = $('chart-body');
+    const chartContent = $('chart-content');
+    const loadingWrap  = $('loading-wrap');
+    const errorWrap    = $('error-wrap');
+    const errorText    = $('error-text');
+    const chartDate    = $('chart-date');
+    const resultCount  = $('result-count');
+
+    /* ── DYNAMIC COPYRIGHT YEAR ─────────────────────────── */
+    $('copy-year').textContent = new Date().getFullYear();
+
+    /* ── DATE HELPERS ───────────────────────────────────── */
+    /**
+     * Returns the date of the most-recent Saturday (or today if today is Saturday).
+     * Does NOT mutate the original Date object.
+     */
+    function getMostRecentSaturday() {
+      const today      = new Date();
+      const dayOfWeek  = today.getDay(); // 0=Sun … 6=Sat
+      // Days to subtract to land on Saturday: Sat→0, Sun→1, Mon→2 … Fri→6
+      const daysBack   = dayOfWeek === 6 ? 0 : dayOfWeek + 1;
+      const saturday   = new Date(today);
+      saturday.setDate(today.getDate() - daysBack);
+      return saturday.toISOString().split('T')[0];
+    }
+
+    /* ── GENIUS URL ─────────────────────────────────────── */
+    function slugify(str) {
+      return str
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-{2,}/g, '-');
+    }
+
+    function getLyricsUrl(song, artist) {
+      // Use only the primary artist (before any & / feat.)
+      const primaryArtist = artist.split(/\s*[&,]\s*/)[0].trim();
+      const slug = `${slugify(primaryArtist)}-${slugify(song)}-lyrics`;
+      if (!slug || slug === '-lyrics') return 'https://genius.com';
+      return `https://genius.com/${slug}`;
+    }
+
+    /* ── RENDER ─────────────────────────────────────────── */
+    function renderTable(data) {
+      // Force animation replay by clearing & reinserting tbody
+      chartBody.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+
+      data.slice(0, 50).forEach(song => {
+        const rank       = parseInt(song.this_week, 10);
+        const peakPos    = parseInt(song.peak_position, 10);
+        const lyricsUrl  = getLyricsUrl(song.song, song.artist);
+
+        const tr = document.createElement('tr');
+
+        // Rank
+        const tdRank = document.createElement('td');
+        tdRank.className = 'col-rank';
+        tdRank.textContent = rank;
+        tr.appendChild(tdRank);
+
+        // Song title
+        const tdSong = document.createElement('td');
+        tdSong.className = 'col-song';
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'song-title';
+        titleSpan.textContent = song.song;
+        tdSong.appendChild(titleSpan);
+        tr.appendChild(tdSong);
+
+        // Artist
+        const tdArtist = document.createElement('td');
+        tdArtist.className = 'col-artist';
+        tdArtist.textContent = song.artist;
+        tr.appendChild(tdArtist);
+
+        // Weeks on chart
+        const tdWeeks = document.createElement('td');
+        tdWeeks.className = 'col-weeks';
+        tdWeeks.textContent = song.weeks_on_chart;
+        tr.appendChild(tdWeeks);
+
+        // Peak position
+        const tdPeak = document.createElement('td');
+        tdPeak.className = 'col-peak';
+        const badge = document.createElement('span');
+        badge.className = peakPos === 1 ? 'peak-badge peak-1' : 'peak-badge';
+        badge.textContent = peakPos === 1 ? '★ 1' : peakPos;
+        tdPeak.appendChild(badge);
+        tr.appendChild(tdPeak);
+
+        // Lyrics link
+        const tdLyrics = document.createElement('td');
+        tdLyrics.className = 'col-lyrics';
+        const link = document.createElement('a');
+        link.href   = lyricsUrl;
+        link.target = '_blank';
+        link.rel    = 'noopener noreferrer';
+        link.className = 'lyrics-link';
+        link.textContent = 'Lyrics';
+        link.setAttribute('aria-label', `View lyrics for ${song.song} by ${song.artist} on Genius`);
+        tdLyrics.appendChild(link);
+        tr.appendChild(tdLyrics);
+
+        fragment.appendChild(tr);
+      });
+
+      chartBody.appendChild(fragment);
+
+      const shown = Math.min(data.length, 50);
+      resultCount.innerHTML = `Showing <strong>${shown}</strong> of ${data.length} tracks`;
+    }
+
+    /* ── SORT ───────────────────────────────────────────── */
+    const NUMERIC_KEYS = new Set(['this_week', 'weeks_on_chart', 'peak_position']);
+
+    function sortData(key) {
+      if (state.sortKey === key) {
+        state.sortDir *= -1;
+      } else {
+        state.sortKey = key;
+        state.sortDir = ASC;
+      }
+
+      state.data.sort((a, b) => {
+        let va = a[key];
+        let vb = b[key];
+        if (NUMERIC_KEYS.has(key)) {
+          va = parseInt(va, 10);
+          vb = parseInt(vb, 10);
+        } else {
+          va = va.toLowerCase();
+          vb = vb.toLowerCase();
+        }
+        if (va < vb) return -1 * state.sortDir;
+        if (va > vb) return  1 * state.sortDir;
+        return 0;
+      });
+
+      // Update aria-sort on all headers
+      document.querySelectorAll('th[data-key]').forEach(th => {
+        if (th.dataset.key === key) {
+          th.setAttribute('aria-sort', state.sortDir === ASC ? 'ascending' : 'descending');
+        } else {
+          th.setAttribute('aria-sort', 'none');
+        }
+      });
+
+      renderTable(state.data);
+    }
+
+    /* ── FETCH ──────────────────────────────────────────── */
+    const BASE = 'https://raw.githubusercontent.com/mhollingshead/billboard-hot-100/main';
+
+    async function fetchValidDates() {
+      const res = await fetch(`${BASE}/valid_dates.json`);
+      if (!res.ok) throw new Error('Could not fetch valid dates');
+      return res.json();
+    }
+
+    async function fetchChartData() {
+      try {
+        let date = getMostRecentSaturday();
+        let res  = await fetch(`${BASE}/date/${date}.json`);
+
+        if (!res.ok) {
+          const validDates = await fetchValidDates();
+          if (!validDates.length) throw new Error('No valid chart dates available');
+          date = validDates[validDates.length - 1];
+          res  = await fetch(`${BASE}/date/${date}.json`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
         }
 
-        // Function to generate Genius lyrics URL
-        function getLyricsUrl(song, artist) {
-            const formattedSong = formatForGenius(song);
-            const formattedArtist = formatForGenius(artist.split(' & ')[0]); // Use primary artist
-            return `https://genius.com/${formattedArtist}-${formattedSong}-lyrics`;
-        }
+        const chart = await res.json();
+        if (!Array.isArray(chart.data)) throw new Error('Unexpected data format');
 
-        // Function to get the closest Saturday's date
-        function getClosestSaturday() {
-            const today = new Date();
-            const dayOfWeek = today.getDay();
-            const diff = dayOfWeek >= 6 ? 6 - dayOfWeek : -dayOfWeek;
-            const saturday = new Date(today.setDate(today.getDate() + diff));
-            return saturday.toISOString().split('T')[0];
-        }
+        state.data = chart.data;
 
-        async function fetchValidDates() {
-            const url = 'https://raw.githubusercontent.com/mhollingshead/billboard-hot-100/main/valid_dates.json';
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch valid dates');
-                }
-                const dates = await response.json();
-                return dates;
-            } catch (error) {
-                console.error('Error fetching valid dates:', error);
-                return [];
-            }
-        }
+        // Format date for display (e.g. "March 15, 2025")
+        const [y, m, d] = date.split('-').map(Number);
+        chartDate.textContent = new Date(y, m - 1, d)
+          .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-        // Function to render table
-        function renderTable(data) {
-            const tbody = document.getElementById('chart-body');
-            tbody.innerHTML = '';
-            data.slice(0, 50).forEach((song) => {
-                const lyricsUrl = getLyricsUrl(song.song, song.artist);
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="rank">${song.this_week}</td>
-                    <td class="song-title">${song.song}</td>
-                    <td class="artist">${song.artist}</td>
-                    <td class="weeks">${song.weeks_on_chart}</td>
-                    <td class="peak">${song.peak_position}</td>
-                    <td class="lyrics"><a href="${lyricsUrl}" target="_blank">View Lyrics</a></td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
+        loadingWrap.style.display = 'none';
+        chartContent.style.display = 'block';
 
-        // Function to sort data
-        function sortData(key) {
-            if (sortKey === key) {
-                sortDirection *= -1; // Toggle direction
-            } else {
-                sortKey = key;
-                sortDirection = 1; // Default to ascending
-            }
+        renderTable(state.data);
 
-            chartData.sort((a, b) => {
-                let valueA = a[key];
-                let valueB = b[key];
+      } catch (err) {
+        console.error('Chart fetch error:', err);
+        loadingWrap.style.display = 'none';
+        errorText.textContent = `Failed to load chart data: ${err.message}. Please try again later.`;
+        errorWrap.classList.add('visible');
+        chartDate.textContent = 'Chart unavailable';
+      }
+    }
 
-                // Convert to numbers for numeric fields
-                if (key === 'this_week' || key === 'weeks_on_chart' || key === 'peak_position') {
-                    valueA = parseInt(valueA, 10);
-                    valueB = parseInt(valueB, 10);
-                } else {
-                    // Convert strings to lowercase for case-insensitive sorting
-                    valueA = valueA.toLowerCase();
-                    valueB = valueB.toLowerCase();
-                }
+    /* ── SORT EVENT LISTENERS (attached once) ───────────── */
+    document.querySelectorAll('th.sortable').forEach(th => {
+      const handler = () => sortData(th.dataset.key);
+      th.addEventListener('click', handler);
+      // Allow keyboard activation
+      th.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+      });
+    });
 
-                if (valueA < valueB) return -1 * sortDirection;
-                if (valueA > valueB) return 1 * sortDirection;
-                return 0;
-            });
-
-            // Update sort indicators
-            document.querySelectorAll('.sort-indicator').forEach((indicator) => {
-                indicator.textContent = '';
-            });
-            const activeTh = document.querySelector(`th[data-key="${key}"] .sort-indicator`);
-            activeTh.textContent = sortDirection === 1 ? '▲' : '▼';
-
-            renderTable(chartData);
-        }
-
-        async function fetchChartData() {
-            const tbody = document.getElementById('chart-body');
-            const errorMessage = document.getElementById('error-message');
-            const chartTitle = document.getElementById('chart-title');
-            let chartDate = getClosestSaturday();
-            let url = `https://raw.githubusercontent.com/mhollingshead/billboard-hot-100/main/date/${chartDate}.json`;
-
-            try {
-                let response = await fetch(url);
-                if (!response.ok) {
-                    // If the date is invalid, fetch valid dates and try the most recent one
-                    const validDates = await fetchValidDates();
-                    if (validDates.length === 0) {
-                        throw new Error('No valid dates available');
-                    }
-                    chartDate = validDates[validDates.length - 1]; // Use the most recent valid date
-                    url = `https://raw.githubusercontent.com/mhollingshead/billboard-hot-100/main/date/${chartDate}.json`;
-                    response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                }
-                const chart = await response.json();
-
-                // Update chart title with the date
-                chartTitle.textContent = `Top 50 US Songs - Weekly Chart (${chartDate})`;
-
-                // Ensure data exists and is an array
-                if (!chart.data || !Array.isArray(chart.data)) {
-                    throw new Error('Invalid chart data format');
-                }
-
-                // Store data globally
-                chartData = chart.data;
-                renderTable(chartData);
-
-                // Add event listeners to sortable headers
-                document.querySelectorAll('.sortable').forEach((th) => {
-                    th.addEventListener('click', () => sortData(th.getAttribute('data-key')));
-                });
-            } catch (error) {
-                console.error('Error fetching chart data:', error);
-                errorMessage.textContent = 'Failed to load chart data. Please try again later.';
-                errorMessage.style.display = 'block';
-            }
-        }
-
-        // Fetch data when the page loads
-        window.onload = fetchChartData;
-    </script>
+    /* ── INIT ───────────────────────────────────────────── */
+    document.addEventListener('DOMContentLoaded', fetchChartData);
+  </script>
 </body>
 </html>
