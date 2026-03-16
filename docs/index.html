@@ -374,13 +374,78 @@
       outline: none;
     }
 
-    /* youtube link */
+    /* ── YOUTUBE THUMBNAIL COLUMN ────────────────────────── */
     .col-youtube {
-      width: 5rem;
-      text-align: center;
+      width: 148px;
+      min-width: 148px;
+      padding: .5rem .75rem;
     }
 
-    .yt-link {
+    /* skeleton shown before the API responds */
+    .yt-skeleton {
+      width: 120px;
+      height: 68px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--border) 25%, var(--border-hi) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* the anchor wrapping the thumbnail */
+    .yt-thumb-link {
+      display: block;
+      width: 120px;
+      height: 68px;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .yt-thumb-link img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: filter .2s var(--ease), transform .2s var(--ease);
+    }
+
+    /* play button overlay */
+    .yt-thumb-link::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.45);
+      opacity: 0;
+      transition: opacity .2s var(--ease);
+      /* play triangle via clip-path on a pseudo – use SVG bg instead */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 68 48'%3E%3Cpath d='M66.5 7.7c-.8-2.9-3-5.2-5.9-6C55.8 0 34 0 34 0S12.2 0 7.4 1.7C4.5 2.5 2.3 4.8 1.5 7.7 0 12.5 0 24 0 24s0 11.5 1.5 16.3c.8 2.9 3 5.2 5.9 6C12.2 48 34 48 34 48s21.8 0 26.6-1.7c2.9-.8 5.1-3.1 5.9-6C68 35.5 68 24 68 24s0-11.5-1.5-16.3z' fill='%23ff0000'/%3E%3Cpath d='M45 24 27 14v20' fill='white'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 48px 34px;
+    }
+
+    .yt-thumb-link:hover::after,
+    .yt-thumb-link:focus-visible::after { opacity: 1; }
+
+    .yt-thumb-link:hover img { filter: brightness(.8); }
+
+    .yt-thumb-link:focus-visible {
+      outline: 2px solid #ff4040;
+      outline-offset: 2px;
+    }
+
+    /* fallback text link if API fails */
+    .yt-link-fallback {
       display: inline-flex;
       align-items: center;
       gap: .35rem;
@@ -396,19 +461,10 @@
       transition: color .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease);
     }
 
-    .yt-link svg { flex-shrink: 0; }
-
-    .yt-link:hover,
-    .yt-link:focus-visible {
+    .yt-link-fallback:hover {
       color: #ff4040;
       border-color: rgba(255,64,64,.4);
       background: rgba(255,64,64,.06);
-      outline: none;
-    }
-
-    .yt-link:hover svg path,
-    .yt-link:focus-visible svg path {
-      fill: #ff4040;
     }
 
     /* ── FOOTER ──────────────────────────────────────────── */
@@ -582,9 +638,116 @@
       return `https://genius.com/${slug}`;
     }
 
-    function getYouTubeUrl(song, artist) {
-      const q = encodeURIComponent(`${artist} - ${song}`);
-      return `https://www.youtube.com/results?search_query=${q}`;
+    /* ── YOUTUBE API ─────────────────────────────────────── */
+    const YT_KEY = 'AIzaSyC3hP0pR6ErOSBmRgyHwb8i7ZG4HB8ZZug';
+    const YT_SEARCH = 'https://www.googleapis.com/youtube/v3/search';
+
+    // Cache key scoped to the chart date so stale data never bleeds across weeks
+    function ytCacheKey(chartDate) {
+      return `yt_cache_${chartDate}`;
+    }
+
+    function loadYtCache(chartDate) {
+      try {
+        return JSON.parse(sessionStorage.getItem(ytCacheKey(chartDate)) || '{}');
+      } catch { return {}; }
+    }
+
+    function saveYtCache(chartDate, cache) {
+      try {
+        sessionStorage.setItem(ytCacheKey(chartDate), JSON.stringify(cache));
+      } catch { /* storage full – silently skip */ }
+    }
+
+    // Unique key for a song entry used in the cache and DOM
+    function songKey(song, artist) {
+      return `${song}|||${artist}`;
+    }
+
+    // Fetch the first YouTube result for one song; returns {videoId, thumb} or null
+    async function fetchOneYtResult(song, artist) {
+      const q = `${artist} - ${song}`;
+      const url = `${YT_SEARCH}?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=1&key=${YT_KEY}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const item = data.items?.[0];
+      if (!item) return null;
+      return {
+        videoId: item.id.videoId,
+        thumb:   item.snippet.thumbnails?.medium?.url
+                 ?? item.snippet.thumbnails?.default?.url
+                 ?? null,
+      };
+    }
+
+    // Update a single YouTube cell in the DOM
+    function applyYtResult(key, result, fallbackSearchUrl) {
+      const cell = document.querySelector(`[data-yt-key="${CSS.escape(key)}"]`);
+      if (!cell) return;
+      cell.innerHTML = ''; // clear skeleton
+
+      if (result?.videoId) {
+        const a = document.createElement('a');
+        a.href      = `https://www.youtube.com/watch?v=${result.videoId}`;
+        a.target    = '_blank';
+        a.rel       = 'noopener noreferrer';
+        a.className = 'yt-thumb-link';
+        a.setAttribute('aria-label', `Watch on YouTube`);
+
+        const img = document.createElement('img');
+        img.src    = result.thumb;
+        img.alt    = '';
+        img.width  = 120;
+        img.height = 68;
+        img.loading = 'lazy';
+        // fallback: if thumbnail 404s, hide gracefully
+        img.onerror = () => { a.replaceWith(makeFallbackLink(fallbackSearchUrl)); };
+        a.appendChild(img);
+        cell.appendChild(a);
+      } else {
+        cell.appendChild(makeFallbackLink(fallbackSearchUrl));
+      }
+    }
+
+    function makeFallbackLink(searchUrl) {
+      const a = document.createElement('a');
+      a.href      = searchUrl;
+      a.target    = '_blank';
+      a.rel       = 'noopener noreferrer';
+      a.className = 'yt-link-fallback';
+      a.textContent = 'Watch';
+      return a;
+    }
+
+    // Orchestrate fetching for all 50 songs, updating cells progressively
+    async function fetchYouTubeThumbnails(songs, chartDate) {
+      const cache = loadYtCache(chartDate);
+      let cacheUpdated = false;
+
+      // Fire all requests concurrently; each updates its cell as it settles
+      await Promise.allSettled(
+        songs.slice(0, 50).map(async song => {
+          const key         = songKey(song.song, song.artist);
+          const searchUrl   = `https://www.youtube.com/results?search_query=${encodeURIComponent(song.artist + ' - ' + song.song)}`;
+
+          // Use cache if available
+          if (cache[key]) {
+            applyYtResult(key, cache[key], searchUrl);
+            return;
+          }
+
+          const result = await fetchOneYtResult(song.song, song.artist);
+          applyYtResult(key, result, searchUrl);
+
+          if (result) {
+            cache[key] = result;
+            cacheUpdated = true;
+          }
+        })
+      );
+
+      if (cacheUpdated) saveYtCache(chartDate, cache);
     }
 
     /* ── RENDER ─────────────────────────────────────────── */
@@ -649,20 +812,14 @@
         tdLyrics.appendChild(link);
         tr.appendChild(tdLyrics);
 
-        // YouTube link
+        // YouTube cell — skeleton until API responds
         const tdYt = document.createElement('td');
         tdYt.className = 'col-youtube';
-        const ytLink = document.createElement('a');
-        ytLink.href   = getYouTubeUrl(song.song, song.artist);
-        ytLink.target = '_blank';
-        ytLink.rel    = 'noopener noreferrer';
-        ytLink.className = 'yt-link';
-        ytLink.setAttribute('aria-label', `Search YouTube for ${song.song} by ${song.artist}`);
-        ytLink.innerHTML =
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M23 7s-.3-2-1.2-2.8c-1.1-1.2-2.4-1.2-3-1.3C16.1 2.8 12 2.8 12 2.8s-4.1 0-6.8.2c-.6.1-1.9.1-3 1.3C1.3 5 1 7 1 7S.7 9.1.7 11.3v2c0 2.1.3 4.3.3 4.3s.3 2 1.2 2.8c1.1 1.2 2.6 1.1 3.3 1.2C7.3 21.8 12 21.8 12 21.8s4.1 0 6.8-.3c.6-.1 1.9-.1 3-1.3.9-.8 1.2-2.8 1.2-2.8s.3-2.1.3-4.3v-2C23.3 9.1 23 7 23 7zM9.7 15.5V8.4l8.1 3.6-8.1 3.5z" fill="currentColor"/>
-          </svg>Watch`;
-        tdYt.appendChild(ytLink);
+        const skeleton = document.createElement('div');
+        skeleton.className = 'yt-skeleton';
+        skeleton.setAttribute('data-yt-key', songKey(song.song, song.artist));
+        skeleton.setAttribute('aria-label', 'Loading YouTube thumbnail');
+        tdYt.appendChild(skeleton);
         tr.appendChild(tdYt);
 
         fragment.appendChild(tr);
@@ -710,6 +867,8 @@
       });
 
       renderTable(state.data);
+      // Re-hydrate thumbnails from cache after sort (renderTable wipes all cells)
+      if (state.currentChartDate) fetchYouTubeThumbnails(state.data, state.currentChartDate);
     }
 
     /* ── FETCH ──────────────────────────────────────────── */
@@ -738,6 +897,7 @@
         if (!Array.isArray(chart.data)) throw new Error('Unexpected data format');
 
         state.data = chart.data;
+        state.currentChartDate = date;
 
         // Format date for display (e.g. "March 15, 2025")
         const [y, m, d] = date.split('-').map(Number);
@@ -748,6 +908,8 @@
         chartContent.style.display = 'block';
 
         renderTable(state.data);
+        // Fetch thumbnails async — table is already visible, cells update progressively
+        fetchYouTubeThumbnails(state.data, date);
 
       } catch (err) {
         console.error('Chart fetch error:', err);
