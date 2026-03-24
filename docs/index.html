@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
 
   <style>
-    /* ── TOKENS ─────────────────────────────────────────── */
     :root {
       --bg:        #0c0c0e;
       --surface:   #131316;
@@ -20,493 +19,165 @@
       --gold:      #f0c040;
       --gold-dim:  #a8841e;
       --red:       #e8445a;
-      --green:     #3dd68c;
       --row-hover: #17171d;
-
       --font-display: 'Bebas Neue', sans-serif;
       --font-mono:    'DM Mono', monospace;
       --font-body:    'DM Sans', sans-serif;
-
       --radius: 4px;
       --ease:   cubic-bezier(.4,0,.2,1);
     }
 
-    /* ── RESET ───────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
 
-    body {
-      font-family: var(--font-body);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* ── GRAIN OVERLAY ───────────────────────────────────── */
     body::before {
       content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      opacity: .025;
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 0; opacity: .025;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       background-size: 200px 200px;
     }
 
-    /* ── HEADER ──────────────────────────────────────────── */
     header {
-      position: relative;
-      z-index: 1;
+      position: relative; z-index: 1;
       padding: 3.5rem 2rem 2.5rem;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: .6rem;
-      text-align: center;
-      background:
-        radial-gradient(ellipse 70% 200px at 50% -40px, rgba(240,192,64,.08) 0%, transparent 70%);
+      display: flex; flex-direction: column; align-items: center; gap: .6rem; text-align: center;
+      background: radial-gradient(ellipse 70% 200px at 50% -40px, rgba(240,192,64,.08) 0%, transparent 70%);
     }
+    .header-eyebrow { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+    h1 { font-family: var(--font-display); font-size: clamp(3rem, 8vw, 6.5rem); letter-spacing: .04em; line-height: 1; color: var(--text); }
+    h1 span { color: var(--gold); }
+    .header-date { font-family: var(--font-mono); font-size: .72rem; color: var(--muted); letter-spacing: .12em; }
 
-    .header-eyebrow {
-      font-family: var(--font-mono);
-      font-size: .68rem;
-      letter-spacing: .18em;
-      text-transform: uppercase;
-      color: var(--gold);
-    }
+    .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 6rem; }
 
-    h1 {
-      font-family: var(--font-display);
-      font-size: clamp(3rem, 8vw, 6.5rem);
-      letter-spacing: .04em;
-      line-height: 1;
-      color: var(--text);
-    }
-
-    h1 span {
-      color: var(--gold);
-    }
-
-    .header-date {
-      font-family: var(--font-mono);
-      font-size: .72rem;
-      color: var(--muted);
-      letter-spacing: .12em;
-    }
-
-    /* ── LAYOUT ──────────────────────────────────────────── */
-    .container {
-      position: relative;
-      z-index: 1;
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem 6rem;
-    }
-
-    /* ── LOADING STATE ───────────────────────────────────── */
-    .loading-wrap {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.2rem;
-      padding: 5rem 0;
-    }
-
-    .spinner {
-      width: 36px;
-      height: 36px;
-      border: 2px solid var(--border-hi);
-      border-top-color: var(--gold);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-
+    .loading-wrap { display: flex; flex-direction: column; align-items: center; gap: 1.2rem; padding: 5rem 0; }
+    .spinner { width: 36px; height: 36px; border: 2px solid var(--border-hi); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-label { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
 
-    .loading-label {
-      font-family: var(--font-mono);
-      font-size: .75rem;
-      letter-spacing: .12em;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-
-    /* ── ERROR ───────────────────────────────────────────── */
-    .error-wrap {
-      display: none;
-      align-items: center;
-      gap: .75rem;
-      padding: 1rem 1.25rem;
-      border: 1px solid rgba(232,68,90,.3);
-      border-radius: var(--radius);
-      background: rgba(232,68,90,.06);
-      color: var(--red);
-      font-size: .85rem;
-      margin-bottom: 1.5rem;
-    }
-
+    .error-wrap { display: none; align-items: center; gap: .75rem; padding: 1rem 1.25rem; border: 1px solid rgba(232,68,90,.3); border-radius: var(--radius); background: rgba(232,68,90,.06); color: var(--red); font-size: .85rem; margin-bottom: 1.5rem; }
     .error-wrap.visible { display: flex; }
 
-    /* ── CONTROLS ROW ────────────────────────────────────── */
-    .controls {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
+    .controls { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .result-count { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+    .result-count strong { color: var(--gold); font-weight: 500; }
 
-    .result-count {
-      font-family: var(--font-mono);
-      font-size: .7rem;
-      letter-spacing: .1em;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
+    .table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 
-    .result-count strong {
-      color: var(--gold);
-      font-weight: 500;
-    }
-
-    /* ── TABLE WRAPPER ───────────────────────────────────── */
-    .table-wrap {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    /* ── TABLE ───────────────────────────────────────────── */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .88rem;
-    }
-
-    caption {
-      caption-side: top;
-      clip: rect(0 0 0 0);
-      clip-path: inset(50%);
-      height: 1px;
-      overflow: hidden;
-      position: absolute;
-      white-space: nowrap;
-      width: 1px;
-    }
-
-    thead tr {
-      border-bottom: 1px solid var(--border-hi);
-    }
-
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    caption { caption-side: top; clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+    thead tr { border-bottom: 1px solid var(--border-hi); }
     th {
-      background: var(--surface);
-      padding: .85rem 1rem;
-      font-family: var(--font-mono);
-      font-size: .65rem;
-      font-weight: 500;
-      letter-spacing: .13em;
-      text-transform: uppercase;
-      color: var(--muted);
-      text-align: left;
-      white-space: nowrap;
-      user-select: none;
+      background: var(--surface); padding: .85rem 1rem;
+      font-family: var(--font-mono); font-size: .65rem; font-weight: 500; letter-spacing: .13em; text-transform: uppercase;
+      color: var(--muted); text-align: left; white-space: nowrap; user-select: none;
     }
-
-    th[aria-sort] { color: var(--gold); }
-
-    th.sortable {
-      cursor: pointer;
-      transition: color .15s var(--ease);
-    }
-
+    th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--gold); }
+    th.sortable { cursor: pointer; transition: color .15s var(--ease); }
     th.sortable:hover { color: var(--text); }
-
-    th.sortable:focus-visible {
-      outline: 2px solid var(--gold);
-      outline-offset: -2px;
-    }
-
-    .sort-icon {
-      display: inline-block;
-      margin-left: .35rem;
-      opacity: .4;
-      transition: opacity .15s var(--ease), transform .15s var(--ease);
-      font-style: normal;
-    }
-
-    th[aria-sort] .sort-icon { opacity: 1; }
+    th.sortable:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+    .sort-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .sort-icon { display: inline-block; margin-left: .35rem; opacity: .4; transition: opacity .15s var(--ease), transform .15s var(--ease); font-style: normal; }
+    th[aria-sort="ascending"] .sort-icon, th[aria-sort="descending"] .sort-icon { opacity: 1; }
     th[aria-sort="descending"] .sort-icon { transform: scaleY(-1); }
 
-    /* ── ROWS ────────────────────────────────────────────── */
-    tbody tr {
-      border-bottom: 1px solid var(--border);
-      transition: background .12s var(--ease);
-      animation: rowIn .3s var(--ease) both;
-    }
-
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .12s var(--ease); animation: rowIn .25s var(--ease) both; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: var(--row-hover); }
+    @keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    tbody tr:nth-child(1)  { animation-delay: .02s } tbody tr:nth-child(2)  { animation-delay: .04s }
+    tbody tr:nth-child(3)  { animation-delay: .06s } tbody tr:nth-child(4)  { animation-delay: .08s }
+    tbody tr:nth-child(5)  { animation-delay: .10s } tbody tr:nth-child(6)  { animation-delay: .12s }
+    tbody tr:nth-child(7)  { animation-delay: .14s } tbody tr:nth-child(8)  { animation-delay: .16s }
+    tbody tr:nth-child(9)  { animation-delay: .18s } tbody tr:nth-child(10) { animation-delay: .20s }
+    tbody tr:nth-child(11) { animation-delay: .22s } tbody tr:nth-child(12) { animation-delay: .24s }
+    tbody tr:nth-child(13) { animation-delay: .26s } tbody tr:nth-child(14) { animation-delay: .28s }
+    tbody tr:nth-child(15) { animation-delay: .30s } tbody tr:nth-child(16) { animation-delay: .32s }
+    tbody tr:nth-child(17) { animation-delay: .34s } tbody tr:nth-child(18) { animation-delay: .36s }
+    tbody tr:nth-child(19) { animation-delay: .38s } tbody tr:nth-child(20) { animation-delay: .40s }
+    tbody tr:nth-child(21) { animation-delay: .42s } tbody tr:nth-child(22) { animation-delay: .44s }
+    tbody tr:nth-child(23) { animation-delay: .46s } tbody tr:nth-child(24) { animation-delay: .48s }
+    tbody tr:nth-child(25) { animation-delay: .50s }
 
-    @keyframes rowIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    td { padding: .85rem 1rem; vertical-align: middle; }
 
-    /* stagger the first 20 rows */
-    tbody tr:nth-child(1)  { animation-delay: .02s }
-    tbody tr:nth-child(2)  { animation-delay: .04s }
-    tbody tr:nth-child(3)  { animation-delay: .06s }
-    tbody tr:nth-child(4)  { animation-delay: .08s }
-    tbody tr:nth-child(5)  { animation-delay: .10s }
-    tbody tr:nth-child(6)  { animation-delay: .12s }
-    tbody tr:nth-child(7)  { animation-delay: .14s }
-    tbody tr:nth-child(8)  { animation-delay: .16s }
-    tbody tr:nth-child(9)  { animation-delay: .18s }
-    tbody tr:nth-child(10) { animation-delay: .20s }
-    tbody tr:nth-child(11) { animation-delay: .22s }
-    tbody tr:nth-child(12) { animation-delay: .24s }
-    tbody tr:nth-child(13) { animation-delay: .26s }
-    tbody tr:nth-child(14) { animation-delay: .28s }
-    tbody tr:nth-child(15) { animation-delay: .30s }
-    tbody tr:nth-child(16) { animation-delay: .32s }
-    tbody tr:nth-child(17) { animation-delay: .34s }
-    tbody tr:nth-child(18) { animation-delay: .36s }
-    tbody tr:nth-child(19) { animation-delay: .38s }
-    tbody tr:nth-child(20) { animation-delay: .40s }
+    .col-rank { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: .03em; color: var(--muted); width: 4rem; min-width: 4rem; }
+    .rank-1 { color: var(--gold); }
+    .rank-2 { color: #c0c0c8; }
+    .rank-3 { color: #b87040; }
 
-    td {
-      padding: .85rem 1rem;
-      vertical-align: middle;
-    }
+    .col-song { width: 30%; }
+    .song-title { font-weight: 500; color: var(--text); line-height: 1.3; display: block; }
+    .col-artist { color: var(--muted); width: 25%; font-size: .84rem; }
+    .col-weeks, .col-peak { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); text-align: center; width: 8rem; }
+    .peak-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; height: 1.5rem; padding: 0 .4rem; border-radius: 3px; font-size: .72rem; }
+    .peak-badge.peak-1 { background: rgba(240,192,64,.15); color: var(--gold); border: 1px solid rgba(240,192,64,.3); }
 
-    /* rank column */
-    .col-rank {
-      font-family: var(--font-display);
-      font-size: 1.4rem;
-      letter-spacing: .03em;
-      color: var(--muted);
-      width: 4rem;
-      min-width: 4rem;
-    }
+    .col-lyrics { width: 5rem; text-align: center; }
+    .lyrics-link { display: inline-flex; align-items: center; gap: .3rem; font-family: var(--font-mono); font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: .3rem .55rem; border: 1px solid var(--border-hi); border-radius: var(--radius); transition: color .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease); }
+    .lyrics-link:hover, .lyrics-link:focus-visible { color: var(--gold); border-color: rgba(240,192,64,.4); background: rgba(240,192,64,.06); outline: none; }
 
-    tr:nth-child(1) .col-rank { color: var(--gold); }
-    tr:nth-child(2) .col-rank { color: #c0c0c8; }
-    tr:nth-child(3) .col-rank { color: #b87040; }
+    /* ── YOUTUBE ─────────────────────────────────────────── */
+    .col-youtube { width: 148px; min-width: 148px; padding: .5rem .75rem; }
 
-    /* song column */
-    .col-song {
-      width: 30%;
-    }
-
-    .song-title {
-      font-weight: 500;
-      color: var(--text);
-      line-height: 1.3;
-      display: block;
-    }
-
-    /* artist column */
-    .col-artist {
-      color: var(--muted);
-      width: 25%;
-      font-size: .84rem;
-    }
-
-    /* weeks / peak */
-    .col-weeks,
-    .col-peak {
-      font-family: var(--font-mono);
-      font-size: .78rem;
-      color: var(--muted);
-      text-align: center;
-      width: 8rem;
-    }
-
-    .peak-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 2rem;
-      height: 1.5rem;
-      padding: 0 .4rem;
-      border-radius: 3px;
-      font-size: .72rem;
-    }
-
-    .peak-badge.peak-1 {
-      background: rgba(240,192,64,.15);
-      color: var(--gold);
-      border: 1px solid rgba(240,192,64,.3);
-    }
-
-    /* lyrics link */
-    .col-lyrics {
-      width: 5rem;
-      text-align: center;
-    }
-
-    .lyrics-link {
-      display: inline-flex;
-      align-items: center;
-      gap: .3rem;
-      font-family: var(--font-mono);
-      font-size: .65rem;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      text-decoration: none;
-      padding: .3rem .55rem;
-      border: 1px solid var(--border-hi);
-      border-radius: var(--radius);
-      transition: color .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease);
-    }
-
-    .lyrics-link:hover,
-    .lyrics-link:focus-visible {
-      color: var(--gold);
-      border-color: rgba(240,192,64,.4);
-      background: rgba(240,192,64,.06);
-      outline: none;
-    }
-
-    /* ── YOUTUBE THUMBNAIL COLUMN ────────────────────────── */
-    .col-youtube {
-      width: 148px;
-      min-width: 148px;
-      padding: .5rem .75rem;
-    }
-
-    /* skeleton shown before the API responds */
     .yt-skeleton {
-      width: 120px;
-      height: 68px;
-      border-radius: 4px;
+      width: 120px; height: 68px; border-radius: 4px;
       background: linear-gradient(90deg, var(--border) 25%, var(--border-hi) 50%, var(--border) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
+      background-size: 200% 100%; animation: shimmer 1.4s infinite;
     }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-
-    /* the anchor wrapping the thumbnail */
-    .yt-thumb-link {
-      display: block;
-      width: 120px;
-      height: 68px;
-      border-radius: 4px;
-      overflow: hidden;
-      position: relative;
-      text-decoration: none;
-      flex-shrink: 0;
-    }
-
-    .yt-thumb-link img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      transition: filter .2s var(--ease), transform .2s var(--ease);
-    }
-
-    /* play button overlay */
+    .yt-thumb-link { display: block; width: 120px; height: 68px; border-radius: 4px; overflow: hidden; position: relative; text-decoration: none; flex-shrink: 0; }
+    .yt-thumb-link img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter .2s var(--ease); }
     .yt-thumb-link::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,.45);
-      opacity: 0;
-      transition: opacity .2s var(--ease);
-      /* play triangle via clip-path on a pseudo – use SVG bg instead */
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 68 48'%3E%3Cpath d='M66.5 7.7c-.8-2.9-3-5.2-5.9-6C55.8 0 34 0 34 0S12.2 0 7.4 1.7C4.5 2.5 2.3 4.8 1.5 7.7 0 12.5 0 24 0 24s0 11.5 1.5 16.3c.8 2.9 3 5.2 5.9 6C12.2 48 34 48 34 48s21.8 0 26.6-1.7c2.9-.8 5.1-3.1 5.9-6C68 35.5 68 24 68 24s0-11.5-1.5-16.3z' fill='%23ff0000'/%3E%3Cpath d='M45 24 27 14v20' fill='white'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: 48px 34px;
+      content: ''; position: absolute; inset: 0;
+      background: rgba(0,0,0,.45) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 68 48'%3E%3Cpath d='M66.5 7.7c-.8-2.9-3-5.2-5.9-6C55.8 0 34 0 34 0S12.2 0 7.4 1.7C4.5 2.5 2.3 4.8 1.5 7.7 0 12.5 0 24 0 24s0 11.5 1.5 16.3c.8 2.9 3 5.2 5.9 6C12.2 48 34 48 34 48s21.8 0 26.6-1.7c2.9-.8 5.1-3.1 5.9-6C68 35.5 68 24 68 24s0-11.5-1.5-16.3z' fill='%23ff0000'/%3E%3Cpath d='M45 24 27 14v20' fill='white'/%3E%3C/svg%3E") no-repeat center / 48px 34px;
+      opacity: 0; transition: opacity .2s var(--ease);
+      pointer-events: none; /* prevent overlay from swallowing clicks meant for the <a> */
     }
-
-    .yt-thumb-link:hover::after,
-    .yt-thumb-link:focus-visible::after { opacity: 1; }
-
+    .yt-thumb-link:hover::after, .yt-thumb-link:focus-visible::after { opacity: 1; }
     .yt-thumb-link:hover img { filter: brightness(.8); }
+    .yt-thumb-link:focus-visible { outline: 2px solid #ff4040; outline-offset: 2px; }
+    .yt-thumb-link { cursor: pointer; }
 
-    .yt-thumb-link:focus-visible {
-      outline: 2px solid #ff4040;
-      outline-offset: 2px;
+    /* Muted placeholder when no video is found */
+    .yt-no-thumb {
+      display: flex; align-items: center; justify-content: center;
+      width: 120px; height: 68px; border-radius: 4px;
+      background: var(--surface); border: 1px solid var(--border-hi);
     }
+    .yt-no-thumb svg { opacity: .22; }
 
-    /* fallback text link if API fails */
-    .yt-link-fallback {
-      display: inline-flex;
-      align-items: center;
-      gap: .35rem;
-      font-family: var(--font-mono);
-      font-size: .65rem;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      text-decoration: none;
-      padding: .3rem .55rem;
-      border: 1px solid var(--border-hi);
-      border-radius: var(--radius);
-      transition: color .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease);
-    }
+    /* ── PAGINATION ──────────────────────────────────────── */
+    .pagination { display: flex; align-items: center; justify-content: center; gap: .5rem; margin-top: 1.75rem; flex-wrap: wrap; }
 
-    .yt-link-fallback:hover {
-      color: #ff4040;
-      border-color: rgba(255,64,64,.4);
-      background: rgba(255,64,64,.06);
+    .page-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 2.25rem; height: 2.25rem; padding: 0 .6rem;
+      font-family: var(--font-mono); font-size: .72rem; letter-spacing: .06em;
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border-hi); border-radius: var(--radius);
+      cursor: pointer; transition: color .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease);
+      user-select: none;
     }
+    .page-btn:hover:not(:disabled) { color: var(--text); border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.04); }
+    .page-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .page-btn.active { color: var(--gold); border-color: rgba(240,192,64,.5); background: rgba(240,192,64,.08); cursor: default; pointer-events: none; }
+    .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .page-btn.page-prev, .page-btn.page-next { padding: 0 .85rem; }
 
     /* ── FOOTER ──────────────────────────────────────────── */
-    footer {
-      position: relative;
-      z-index: 1;
-      border-top: 1px solid var(--border);
-      padding: 1.5rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .footer-copy {
-      font-family: var(--font-mono);
-      font-size: .65rem;
-      letter-spacing: .08em;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-
-    .footer-source {
-      font-family: var(--font-mono);
-      font-size: .65rem;
-      letter-spacing: .06em;
-      color: var(--muted);
-    }
-
-    .footer-source a {
-      color: var(--gold-dim);
-      text-decoration: none;
-      transition: color .15s var(--ease);
-    }
-
+    footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .footer-copy { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+    .footer-source { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .06em; color: var(--muted); }
+    .footer-source a { color: var(--gold-dim); text-decoration: none; transition: color .15s var(--ease); }
     .footer-source a:hover { color: var(--gold); }
 
-    /* ── RESPONSIVE ──────────────────────────────────────── */
     @media (max-width: 700px) {
-      .col-weeks, .col-peak { display: none; }
-      .col-artist { display: none; }
+      .col-weeks, .col-peak, .col-artist { display: none; }
       .col-rank { width: 3rem; min-width: 3rem; }
       h1 { font-size: clamp(2.5rem, 12vw, 4rem); }
     }
@@ -545,21 +216,21 @@
           <caption>Billboard Hot 100 — weekly ranking of top US songs by streaming, airplay and sales</caption>
           <thead>
             <tr>
-              <th scope="col" class="sortable col-rank"
-                  data-key="this_week" tabindex="0"
-                  aria-sort="ascending">#<i class="sort-icon" aria-hidden="true">↑</i></th>
-              <th scope="col" class="sortable col-song"
-                  data-key="song" tabindex="0"
-                  aria-sort="none">Song<i class="sort-icon" aria-hidden="true">↑</i></th>
-              <th scope="col" class="sortable col-artist"
-                  data-key="artist" tabindex="0"
-                  aria-sort="none">Artist<i class="sort-icon" aria-hidden="true">↑</i></th>
-              <th scope="col" class="sortable col-weeks"
-                  data-key="weeks_on_chart" tabindex="0"
-                  aria-sort="none">Wks<i class="sort-icon" aria-hidden="true">↑</i></th>
-              <th scope="col" class="sortable col-peak"
-                  data-key="peak_position" tabindex="0"
-                  aria-sort="none">Peak<i class="sort-icon" aria-hidden="true">↑</i></th>
+              <th scope="col" class="sortable col-rank" data-key="this_week" tabindex="0" aria-sort="ascending">
+                #<i class="sort-icon" aria-hidden="true">↑</i><span class="sort-sr">sorted ascending</span>
+              </th>
+              <th scope="col" class="sortable col-song" data-key="song" tabindex="0" aria-sort="none">
+                Song<i class="sort-icon" aria-hidden="true">↑</i><span class="sort-sr"></span>
+              </th>
+              <th scope="col" class="sortable col-artist" data-key="artist" tabindex="0" aria-sort="none">
+                Artist<i class="sort-icon" aria-hidden="true">↑</i><span class="sort-sr"></span>
+              </th>
+              <th scope="col" class="sortable col-weeks" data-key="weeks_on_chart" tabindex="0" aria-sort="none">
+                Wks<i class="sort-icon" aria-hidden="true">↑</i><span class="sort-sr"></span>
+              </th>
+              <th scope="col" class="sortable col-peak" data-key="peak_position" tabindex="0" aria-sort="none">
+                Peak<i class="sort-icon" aria-hidden="true">↑</i><span class="sort-sr"></span>
+              </th>
               <th scope="col" class="col-lyrics">Lyrics</th>
               <th scope="col" class="col-youtube">YouTube</th>
             </tr>
@@ -567,6 +238,8 @@
           <tbody id="chart-body"></tbody>
         </table>
       </div>
+
+      <nav class="pagination" id="pagination" aria-label="Chart pages"></nav>
     </div>
 
   </div>
@@ -581,18 +254,26 @@
   </footer>
 
   <script>
-    /* ── CONSTANTS ─────────────────────────────────────── */
     const ASC  = 1;
     const DESC = -1;
+    const PAGE_SIZE = 25;
 
-    /* ── STATE ──────────────────────────────────────────── */
+    /*
+     * ⚠️  SECURITY NOTE: Never expose API keys in client-side JS.
+     *     For production, proxy this through a server-side endpoint.
+     *     Replace with your own YouTube Data API v3 key.
+     */
+    const YT_KEY    = 'AIzaSyC3hP0pR6ErOSBmRgyHwb8i7ZG4HB8ZZug';
+    const YT_SEARCH = 'https://www.googleapis.com/youtube/v3/search';
+
     const state = {
-      data:      [],
-      sortKey:   'this_week',
-      sortDir:   ASC,
+      data:             [],
+      sortKey:          'this_week',
+      sortDir:          ASC,
+      currentChartDate: null,
+      page:             1,
     };
 
-    /* ── DOM REFS ───────────────────────────────────────── */
     const $ = id => document.getElementById(id);
     const chartBody    = $('chart-body');
     const chartContent = $('chart-content');
@@ -601,277 +282,300 @@
     const errorText    = $('error-text');
     const chartDate    = $('chart-date');
     const resultCount  = $('result-count');
+    const pagination   = $('pagination');
 
-    /* ── DYNAMIC COPYRIGHT YEAR ─────────────────────────── */
     $('copy-year').textContent = new Date().getFullYear();
 
-    /* ── DATE HELPERS ───────────────────────────────────── */
-    /**
-     * Returns the date of the most-recent Saturday (or today if today is Saturday).
-     * Does NOT mutate the original Date object.
-     */
-    function getMostRecentSaturday() {
-      const today      = new Date();
-      const dayOfWeek  = today.getDay(); // 0=Sun … 6=Sat
-      // Days to subtract to land on Saturday: Sat→0, Sun→1, Mon→2 … Fri→6
-      const daysBack   = dayOfWeek === 6 ? 0 : dayOfWeek + 1;
-      const saturday   = new Date(today);
-      saturday.setDate(today.getDate() - daysBack);
-      return saturday.toISOString().split('T')[0];
+    /* ── DATE ─────────────────────────────────────────────── */
+    function getNextSaturday() {
+      const today = new Date();
+      const diff  = today.getDay() === 6 ? 0 : 6 - today.getDay();
+      const sat   = new Date(today);
+      sat.setDate(today.getDate() + diff);
+      return sat.toISOString().split('T')[0];
     }
 
-    /* ── GENIUS URL ─────────────────────────────────────── */
-    function slugify(str) {
-      return str
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/-{2,}/g, '-');
+    /* ── GENIUS ───────────────────────────────────────────── */
+    function slugify(s) {
+      return s.toLowerCase().replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-{2,}/g,'-');
     }
-
     function getLyricsUrl(song, artist) {
-      // Use only the primary artist (before any & / feat.)
-      const primaryArtist = artist.split(/\s*[&,]\s*/)[0].trim();
-      const slug = `${slugify(primaryArtist)}-${slugify(song)}-lyrics`;
-      if (!slug || slug === '-lyrics') return 'https://genius.com';
-      return `https://genius.com/${slug}`;
+      const a    = artist.split(/\s*[&,]\s*/)[0].trim();
+      const slug = `${slugify(a)}-${slugify(song)}-lyrics`;
+      return (!slug || slug === '-lyrics') ? 'https://genius.com' : `https://genius.com/${slug}`;
     }
 
-    /* ── YOUTUBE API ─────────────────────────────────────── */
-    const YT_KEY = 'AIzaSyC3hP0pR6ErOSBmRgyHwb8i7ZG4HB8ZZug';
-    const YT_SEARCH = 'https://www.googleapis.com/youtube/v3/search';
+    /* ── YOUTUBE ──────────────────────────────────────────── */
+    const ytCacheKey  = date => `yt_cache_${date}`;
+    const loadYtCache = date => { try { return JSON.parse(sessionStorage.getItem(ytCacheKey(date)) || '{}'); } catch { return {}; } };
+    const saveYtCache = (date, c) => { try { sessionStorage.setItem(ytCacheKey(date), JSON.stringify(c)); } catch {} };
+    const songKey     = (song, artist) => `${song}|||${artist}`;
 
-    // Cache key scoped to the chart date so stale data never bleeds across weeks
-    function ytCacheKey(chartDate) {
-      return `yt_cache_${chartDate}`;
-    }
+    // In-memory result store — keys are songKey strings, values are {videoId,thumb}|null
+    const ytStore = {};
 
-    function loadYtCache(chartDate) {
-      try {
-        return JSON.parse(sessionStorage.getItem(ytCacheKey(chartDate)) || '{}');
-      } catch { return {}; }
-    }
-
-    function saveYtCache(chartDate, cache) {
-      try {
-        sessionStorage.setItem(ytCacheKey(chartDate), JSON.stringify(cache));
-      } catch { /* storage full – silently skip */ }
-    }
-
-    // Unique key for a song entry used in the cache and DOM
-    function songKey(song, artist) {
-      return `${song}|||${artist}`;
-    }
-
-    // Fetch the first YouTube result for one song; returns {videoId, thumb} or null
-    async function fetchOneYtResult(song, artist) {
-      const q = `${artist} - ${song}`;
-      const url = `${YT_SEARCH}?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=1&key=${YT_KEY}`;
-      const res = await fetch(url);
+    async function fetchOneYtResult(song, artist, signal) {
+      const url = `${YT_SEARCH}?part=snippet&q=${encodeURIComponent(artist+' - '+song)}&type=video&maxResults=1&key=${YT_KEY}`;
+      const res = await fetch(url, { signal });
       if (!res.ok) return null;
       const data = await res.json();
       const item = data.items?.[0];
       if (!item) return null;
       return {
         videoId: item.id.videoId,
-        thumb:   item.snippet.thumbnails?.medium?.url
-                 ?? item.snippet.thumbnails?.default?.url
-                 ?? null,
+        thumb:   item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? null,
       };
     }
 
-    // Update a single YouTube cell in the DOM
-    function applyYtResult(key, result, fallbackSearchUrl) {
-      const cell = document.querySelector(`[data-yt-key="${CSS.escape(key)}"]`);
+    /**
+     * Write a resolved YT result into the matching visible cell.
+     * Always renders either a thumbnail or a muted placeholder icon.
+     * Never renders a text/link fallback.
+     */
+    function applyYtResult(key, result) {
+      const cell = document.querySelector(`td[data-yt-key="${CSS.escape(key)}"]`);
       if (!cell) return;
-      cell.innerHTML = ''; // clear skeleton
+      cell.innerHTML = '';
 
-      if (result?.videoId) {
-        const a = document.createElement('a');
+      if (result?.videoId && result?.thumb) {
+        const a   = document.createElement('a');
         a.href      = `https://www.youtube.com/watch?v=${result.videoId}`;
         a.target    = '_blank';
         a.rel       = 'noopener noreferrer';
         a.className = 'yt-thumb-link';
-        a.setAttribute('aria-label', `Watch on YouTube`);
-
-        const img = document.createElement('img');
-        img.src    = result.thumb;
-        img.alt    = '';
-        img.width  = 120;
-        img.height = 68;
+        a.setAttribute('aria-label', 'Watch on YouTube');
+        const img   = document.createElement('img');
+        img.src     = result.thumb;
+        img.alt     = '';
+        img.width   = 120;
+        img.height  = 68;
         img.loading = 'lazy';
-        // fallback: if thumbnail 404s, hide gracefully
-        img.onerror = () => { a.replaceWith(makeFallbackLink(fallbackSearchUrl)); };
+        // If the thumbnail URL itself 404s, swap to the placeholder
+        img.onerror = () => a.replaceWith(makeNoThumbPlaceholder());
         a.appendChild(img);
         cell.appendChild(a);
       } else {
-        cell.appendChild(makeFallbackLink(fallbackSearchUrl));
+        cell.appendChild(makeNoThumbPlaceholder());
       }
     }
 
-    function makeFallbackLink(searchUrl) {
-      const a = document.createElement('a');
-      a.href      = searchUrl;
-      a.target    = '_blank';
-      a.rel       = 'noopener noreferrer';
-      a.className = 'yt-link-fallback';
-      a.textContent = 'Watch';
-      return a;
+    function makeNoThumbPlaceholder() {
+      const div = document.createElement('div');
+      div.className = 'yt-no-thumb';
+      div.setAttribute('aria-label', 'No video available');
+      div.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 9l5 3-5 3V9z" fill="currentColor"/>
+      </svg>`;
+      return div;
     }
 
-    // Orchestrate fetching for all 50 songs, updating cells progressively
-    async function fetchYouTubeThumbnails(songs, chartDate) {
-      const cache = loadYtCache(chartDate);
-      let cacheUpdated = false;
+    /**
+     * Fetch thumbnails for every song in the list.
+     * Results are cached in ytStore so page transitions
+     * and re-sorts paint instantly from memory.
+     */
+    async function fetchAllYouTubeThumbnails(songs, date, abortController) {
+      const cache        = loadYtCache(date);
+      let   cacheUpdated = false;
 
-      // Fire all requests concurrently; each updates its cell as it settles
-      await Promise.allSettled(
-        songs.slice(0, 50).map(async song => {
-          const key         = songKey(song.song, song.artist);
-          const searchUrl   = `https://www.youtube.com/results?search_query=${encodeURIComponent(song.artist + ' - ' + song.song)}`;
+      await Promise.allSettled(songs.map(async song => {
+        const key = songKey(song.song, song.artist);
 
-          // Use cache if available
-          if (cache[key]) {
-            applyYtResult(key, cache[key], searchUrl);
-            return;
-          }
+        if (ytStore[key] !== undefined) {
+          applyYtResult(key, ytStore[key]);
+          return;
+        }
+        if (cache[key]) {
+          ytStore[key] = cache[key];
+          applyYtResult(key, cache[key]);
+          return;
+        }
 
-          const result = await fetchOneYtResult(song.song, song.artist);
-          applyYtResult(key, result, searchUrl);
+        try {
+          const result = await fetchOneYtResult(song.song, song.artist, abortController.signal);
+          if (abortController.signal.aborted) return;
+          ytStore[key] = result ?? null;
+          applyYtResult(key, result);
+          if (result) { cache[key] = result; cacheUpdated = true; }
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          ytStore[key] = null;
+          applyYtResult(key, null);
+        }
+      }));
 
-          if (result) {
-            cache[key] = result;
-            cacheUpdated = true;
-          }
-        })
-      );
-
-      if (cacheUpdated) saveYtCache(chartDate, cache);
+      if (cacheUpdated) saveYtCache(date, cache);
     }
 
-    /* ── RENDER ─────────────────────────────────────────── */
-    function renderTable(data) {
-      // Force animation replay by clearing & reinserting tbody
+    /**
+     * After a DOM re-render, immediately repaint cells whose results
+     * are already in ytStore — no network needed.
+     */
+    function applyStoredYt(songs) {
+      songs.forEach(song => {
+        const key = songKey(song.song, song.artist);
+        if (ytStore[key] !== undefined) applyYtResult(key, ytStore[key]);
+      });
+    }
+
+    /* ── PAGINATION ───────────────────────────────────────── */
+    const totalPages = () => Math.ceil(state.data.length / PAGE_SIZE);
+    const pageSlice  = () => state.data.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+
+    function renderPagination() {
+      pagination.innerHTML = '';
+      const total = totalPages();
+      if (total <= 1) return;
+
+      const mkBtn = (label, page, cls = '') => {
+        const btn = document.createElement('button');
+        btn.className = `page-btn${cls ? ' '+cls : ''}${page === state.page ? ' active' : ''}`;
+        btn.innerHTML = label;
+        btn.disabled  = page === state.page || page < 1 || page > total;
+        btn.setAttribute('aria-label', cls ? label.replace(/[←→]/g,'').trim() : `Page ${page}`);
+        if (page === state.page) btn.setAttribute('aria-current', 'page');
+        btn.addEventListener('click', () => goToPage(page));
+        return btn;
+      };
+
+      pagination.appendChild(mkBtn('← Prev', state.page - 1, 'page-prev'));
+      for (let p = 1; p <= total; p++) pagination.appendChild(mkBtn(p, p));
+      pagination.appendChild(mkBtn('Next →', state.page + 1, 'page-next'));
+    }
+
+    function goToPage(p) {
+      const total = totalPages();
+      if (p < 1 || p > total || p === state.page) return;
+      state.page = p;
+      renderTable();
+      document.querySelector('.table-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /* ── RENDER ───────────────────────────────────────────── */
+    function renderTable() {
+      const slice = pageSlice();
       chartBody.innerHTML = '';
-      const fragment = document.createDocumentFragment();
+      const frag = document.createDocumentFragment();
 
-      data.slice(0, 50).forEach(song => {
-        const rank       = parseInt(song.this_week, 10);
-        const peakPos    = parseInt(song.peak_position, 10);
-        const lyricsUrl  = getLyricsUrl(song.song, song.artist);
-
-        const tr = document.createElement('tr');
+      slice.forEach(song => {
+        const rank      = parseInt(song.this_week, 10);
+        const peakPos   = parseInt(song.peak_position, 10);
+        const key       = songKey(song.song, song.artist);
+        const tr        = document.createElement('tr');
 
         // Rank
-        const tdRank = document.createElement('td');
-        tdRank.className = 'col-rank';
-        tdRank.textContent = rank;
-        tr.appendChild(tdRank);
+        const tdR = document.createElement('td');
+        tdR.className   = 'col-rank' + (rank===1?' rank-1':rank===2?' rank-2':rank===3?' rank-3':'');
+        tdR.textContent = rank;
+        tr.appendChild(tdR);
 
-        // Song title
-        const tdSong = document.createElement('td');
-        tdSong.className = 'col-song';
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'song-title';
-        titleSpan.textContent = song.song;
-        tdSong.appendChild(titleSpan);
-        tr.appendChild(tdSong);
+        // Song
+        const tdS = document.createElement('td');
+        tdS.className   = 'col-song';
+        const sp  = document.createElement('span');
+        sp.className    = 'song-title';
+        sp.textContent  = song.song;
+        tdS.appendChild(sp);
+        tr.appendChild(tdS);
 
         // Artist
-        const tdArtist = document.createElement('td');
-        tdArtist.className = 'col-artist';
-        tdArtist.textContent = song.artist;
-        tr.appendChild(tdArtist);
+        const tdA = document.createElement('td');
+        tdA.className   = 'col-artist';
+        tdA.textContent = song.artist;
+        tr.appendChild(tdA);
 
-        // Weeks on chart
-        const tdWeeks = document.createElement('td');
-        tdWeeks.className = 'col-weeks';
-        tdWeeks.textContent = song.weeks_on_chart;
-        tr.appendChild(tdWeeks);
+        // Weeks
+        const tdW = document.createElement('td');
+        tdW.className   = 'col-weeks';
+        tdW.textContent = song.weeks_on_chart;
+        tr.appendChild(tdW);
 
-        // Peak position
-        const tdPeak = document.createElement('td');
-        tdPeak.className = 'col-peak';
+        // Peak
+        const tdP = document.createElement('td');
+        tdP.className   = 'col-peak';
         const badge = document.createElement('span');
-        badge.className = peakPos === 1 ? 'peak-badge peak-1' : 'peak-badge';
-        badge.textContent = peakPos === 1 ? '★ 1' : peakPos;
-        tdPeak.appendChild(badge);
-        tr.appendChild(tdPeak);
+        badge.className   = peakPos===1 ? 'peak-badge peak-1' : 'peak-badge';
+        badge.textContent = peakPos===1 ? '★ 1' : peakPos;
+        tdP.appendChild(badge);
+        tr.appendChild(tdP);
 
-        // Lyrics link
-        const tdLyrics = document.createElement('td');
-        tdLyrics.className = 'col-lyrics';
-        const link = document.createElement('a');
-        link.href   = lyricsUrl;
-        link.target = '_blank';
-        link.rel    = 'noopener noreferrer';
-        link.className = 'lyrics-link';
-        link.textContent = 'Lyrics';
-        link.setAttribute('aria-label', `View lyrics for ${song.song} by ${song.artist} on Genius`);
-        tdLyrics.appendChild(link);
-        tr.appendChild(tdLyrics);
+        // Lyrics
+        const tdL = document.createElement('td');
+        tdL.className = 'col-lyrics';
+        const lnk = document.createElement('a');
+        lnk.href      = getLyricsUrl(song.song, song.artist);
+        lnk.target    = '_blank';
+        lnk.rel       = 'noopener noreferrer';
+        lnk.className = 'lyrics-link';
+        lnk.textContent = 'Lyrics';
+        lnk.setAttribute('aria-label', `View lyrics for ${song.song} by ${song.artist} on Genius`);
+        tdL.appendChild(lnk);
+        tr.appendChild(tdL);
 
-        // YouTube cell — skeleton until API responds
-        const tdYt = document.createElement('td');
-        tdYt.className = 'col-youtube';
-        const skeleton = document.createElement('div');
-        skeleton.className = 'yt-skeleton';
-        skeleton.setAttribute('data-yt-key', songKey(song.song, song.artist));
-        skeleton.setAttribute('aria-label', 'Loading YouTube thumbnail');
-        tdYt.appendChild(skeleton);
-        tr.appendChild(tdYt);
+        // YouTube — data-yt-key on <td> (stable target; skeleton is ephemeral)
+        const tdY = document.createElement('td');
+        tdY.className = 'col-youtube';
+        tdY.setAttribute('data-yt-key', key);
+        const sk = document.createElement('div');
+        sk.className = 'yt-skeleton';
+        sk.setAttribute('aria-label', 'Loading YouTube thumbnail');
+        tdY.appendChild(sk);
+        tr.appendChild(tdY);
 
-        fragment.appendChild(tr);
+        frag.appendChild(tr);
       });
 
-      chartBody.appendChild(fragment);
+      chartBody.appendChild(frag);
 
-      const shown = Math.min(data.length, 50);
-      resultCount.innerHTML = `Showing <strong>${shown}</strong> of ${data.length} tracks`;
+      const start = (state.page - 1) * PAGE_SIZE + 1;
+      const end   = Math.min(state.page * PAGE_SIZE, state.data.length);
+      resultCount.innerHTML = `Showing <strong>${start}–${end}</strong> of ${state.data.length} tracks`;
+
+      renderPagination();
+
+      // Instantly repaint cells already in memory (no skeleton flash on page turn)
+      applyStoredYt(slice);
     }
 
-    /* ── SORT ───────────────────────────────────────────── */
-    const NUMERIC_KEYS = new Set(['this_week', 'weeks_on_chart', 'peak_position']);
+    /* ── SORT ─────────────────────────────────────────────── */
+    const NUMERIC_KEYS = new Set(['this_week','weeks_on_chart','peak_position']);
+    let ytAbortController = null;
 
     function sortData(key) {
-      if (state.sortKey === key) {
-        state.sortDir *= -1;
-      } else {
-        state.sortKey = key;
-        state.sortDir = ASC;
-      }
+      state.sortDir = (state.sortKey === key) ? state.sortDir * -1 : ASC;
+      state.sortKey = key;
+      state.page    = 1;
 
       state.data.sort((a, b) => {
-        let va = a[key];
-        let vb = b[key];
-        if (NUMERIC_KEYS.has(key)) {
-          va = parseInt(va, 10);
-          vb = parseInt(vb, 10);
-        } else {
-          va = va.toLowerCase();
-          vb = vb.toLowerCase();
-        }
-        if (va < vb) return -1 * state.sortDir;
-        if (va > vb) return  1 * state.sortDir;
-        return 0;
+        let va = a[key], vb = b[key];
+        if (NUMERIC_KEYS.has(key)) { va = parseInt(va,10); vb = parseInt(vb,10); }
+        else { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+        return va < vb ? -state.sortDir : va > vb ? state.sortDir : 0;
       });
 
-      // Update aria-sort on all headers
       document.querySelectorAll('th[data-key]').forEach(th => {
+        const sr = th.querySelector('.sort-sr');
         if (th.dataset.key === key) {
-          th.setAttribute('aria-sort', state.sortDir === ASC ? 'ascending' : 'descending');
+          const dir = state.sortDir === ASC ? 'ascending' : 'descending';
+          th.setAttribute('aria-sort', dir);
+          if (sr) sr.textContent = `sorted ${dir}`;
         } else {
           th.setAttribute('aria-sort', 'none');
+          if (sr) sr.textContent = '';
         }
       });
 
-      renderTable(state.data);
-      // Re-hydrate thumbnails from cache after sort (renderTable wipes all cells)
-      if (state.currentChartDate) fetchYouTubeThumbnails(state.data, state.currentChartDate);
+      renderTable();
+
+      if (ytAbortController) ytAbortController.abort();
+      if (state.currentChartDate) {
+        ytAbortController = new AbortController();
+        fetchAllYouTubeThumbnails(state.data, state.currentChartDate, ytAbortController);
+      }
     }
 
-    /* ── FETCH ──────────────────────────────────────────── */
+    /* ── FETCH CHART DATA ─────────────────────────────────── */
     const BASE = 'https://raw.githubusercontent.com/mhollingshead/billboard-hot-100/main';
 
     async function fetchValidDates() {
@@ -880,15 +584,25 @@
       return res.json();
     }
 
+    function findClosestValidDate(validDates, target) {
+      if (!validDates.length) return null;
+      let closest = validDates[validDates.length - 1];
+      for (let i = validDates.length - 1; i >= 0; i--) {
+        if (validDates[i] <= target) { closest = validDates[i]; break; }
+      }
+      return closest;
+    }
+
     async function fetchChartData() {
       try {
-        let date = getMostRecentSaturday();
+        let date = getNextSaturday();
         let res  = await fetch(`${BASE}/date/${date}.json`);
 
         if (!res.ok) {
           const validDates = await fetchValidDates();
           if (!validDates.length) throw new Error('No valid chart dates available');
-          date = validDates[validDates.length - 1];
+          date = findClosestValidDate(validDates, date);
+          if (!date) throw new Error('No valid chart dates available');
           res  = await fetch(`${BASE}/date/${date}.json`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
         }
@@ -896,41 +610,40 @@
         const chart = await res.json();
         if (!Array.isArray(chart.data)) throw new Error('Unexpected data format');
 
-        state.data = chart.data;
+        state.data             = chart.data;
         state.currentChartDate = date;
+        state.page             = 1;
 
-        // Format date for display (e.g. "March 15, 2025")
         const [y, m, d] = date.split('-').map(Number);
-        chartDate.textContent = new Date(y, m - 1, d)
-          .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        chartDate.textContent = new Date(Date.UTC(y, m-1, d))
+          .toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric', timeZone:'UTC' });
 
-        loadingWrap.style.display = 'none';
+        loadingWrap.style.display  = 'none';
         chartContent.style.display = 'block';
 
-        renderTable(state.data);
-        // Fetch thumbnails async — table is already visible, cells update progressively
-        fetchYouTubeThumbnails(state.data, date);
+        renderTable();
+
+        // Kick off thumbnail fetches for ALL 100 songs.
+        // The ytStore means page 2+ render thumbnails instantly when navigated to.
+        ytAbortController = new AbortController();
+        fetchAllYouTubeThumbnails(state.data, date, ytAbortController);
 
       } catch (err) {
         console.error('Chart fetch error:', err);
         loadingWrap.style.display = 'none';
-        errorText.textContent = `Failed to load chart data: ${err.message}. Please try again later.`;
+        errorText.textContent     = `Failed to load chart data: ${err.message}. Please try again later.`;
         errorWrap.classList.add('visible');
-        chartDate.textContent = 'Chart unavailable';
+        chartDate.textContent     = 'Chart unavailable';
       }
     }
 
-    /* ── SORT EVENT LISTENERS (attached once) ───────────── */
+    /* ── SORT LISTENERS ───────────────────────────────────── */
     document.querySelectorAll('th.sortable').forEach(th => {
-      const handler = () => sortData(th.dataset.key);
-      th.addEventListener('click', handler);
-      // Allow keyboard activation
-      th.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
-      });
+      const h = () => sortData(th.dataset.key);
+      th.addEventListener('click', h);
+      th.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); h(); } });
     });
 
-    /* ── INIT ───────────────────────────────────────────── */
     document.addEventListener('DOMContentLoaded', fetchChartData);
   </script>
 </body>
