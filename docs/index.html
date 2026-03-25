@@ -195,8 +195,74 @@
     .btn-clear:hover { color: var(--red); border-color: rgba(232,68,90,.4); background: rgba(232,68,90,.06); }
 
     /* ── LIBRARY COLUMNS ─────────────────────────────────── */
-    .col-album { width: 22%; font-size: .83rem; color: var(--muted); }
-    .col-duration { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); text-align: center; width: 7rem; }
+    .col-album { width: 20%; font-size: .83rem; color: var(--muted); }
+    .col-duration { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); text-align: center; width: 6rem; }
+    .col-actions { width: 2.5rem; min-width: 2.5rem; text-align: center; padding: .5rem .4rem; }
+
+    /* ── INLINE EDITING ──────────────────────────────────── */
+    /* Cells that can be edited get a subtle hover affordance */
+    .editable {
+      cursor: text;
+      border-radius: 3px;
+      padding: .15rem .3rem;
+      margin: -.15rem -.3rem;
+      transition: background .12s var(--ease), outline .12s var(--ease);
+      display: inline-block; width: calc(100% + .6rem);
+    }
+    .editable:hover { background: rgba(255,255,255,.05); }
+    .editable:focus { outline: none; }
+
+    /* Pencil icon shown on row hover, next to editable text */
+    tr:hover .editable::after {
+      content: '';
+      display: inline-block;
+      width: 10px; height: 10px;
+      margin-left: .4rem;
+      vertical-align: middle;
+      opacity: .35;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M8.5 1.5l2 2-7 7H1.5v-2l7-7z' stroke='%23e8e8f0' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / 10px;
+    }
+
+    /* Input that replaces the span during editing */
+    .edit-input {
+      font-family: inherit; font-size: inherit; font-weight: inherit;
+      color: var(--text);
+      background: rgba(240,192,64,.07);
+      border: 1px solid rgba(240,192,64,.45);
+      border-radius: 3px;
+      padding: .2rem .4rem;
+      width: 100%;
+      outline: none;
+      caret-color: var(--gold);
+    }
+    .edit-input:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(240,192,64,.12); }
+
+    /* Hint bar shown below an active edit */
+    .edit-hint {
+      font-family: var(--font-mono); font-size: .6rem; letter-spacing: .05em;
+      color: var(--muted); margin-top: .3rem;
+    }
+    .edit-hint kbd {
+      font-family: var(--font-mono); background: var(--border-hi);
+      border-radius: 2px; padding: .05rem .3rem; font-size: .58rem;
+    }
+
+    /* Delete (trash) button per row */
+    .btn-delete {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.7rem; height: 1.7rem;
+      background: transparent; border: 1px solid transparent;
+      border-radius: var(--radius); cursor: pointer; color: var(--border-hi);
+      transition: color .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease);
+      flex-shrink: 0;
+    }
+    .btn-delete:hover { color: var(--red); border-color: rgba(232,68,90,.35); background: rgba(232,68,90,.06); }
+    .btn-delete:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+    tr:not(:hover) .btn-delete { opacity: 0; pointer-events: none; }
+
+    /* Export button */
+    .btn-export { background: transparent; color: var(--muted); border: 1px solid var(--border-hi); }
+    .btn-export:hover { color: var(--green, #3dd68c); border-color: rgba(61,214,140,.4); background: rgba(61,214,140,.06); }
 
     /* ── LIBRARY EMPTY STATE ─────────────────────────────── */
     .lib-empty { display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 4rem 2rem; text-align: center; }
@@ -251,6 +317,12 @@
                 <path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               Import CSV
+            </button>
+            <button class="btn-icon btn-export" id="btn-export">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path d="M6 11V4M3 7l3-3 3 3M1 11h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Export CSV
             </button>
             <button class="btn-icon btn-clear" id="btn-clear">Clear</button>
           </div>
@@ -380,13 +452,14 @@
         { key: null,             label: 'YouTube',  cls: 'col-youtube'             },
       ],
       library: [
-        { key: 'id',       label: '#',        cls: 'col-rank',     sortable: true },
-        { key: 'song',     label: 'Song',     cls: 'col-song',     sortable: true },
-        { key: 'artist',   label: 'Artist',   cls: 'col-artist',   sortable: true },
-        { key: 'album',    label: 'Album',    cls: 'col-album',    sortable: true },
-        { key: 'duration', label: 'Duration', cls: 'col-duration', sortable: true },
-        { key: null,       label: 'Lyrics',   cls: 'col-lyrics'              },
-        { key: null,       label: 'YouTube',  cls: 'col-youtube'             },
+        { key: 'id',       label: '#',        cls: 'col-rank',     sortable: true  },
+        { key: 'song',     label: 'Song',     cls: 'col-song',     sortable: true  },
+        { key: 'artist',   label: 'Artist',   cls: 'col-artist',   sortable: true  },
+        { key: 'album',    label: 'Album',    cls: 'col-album',    sortable: true  },
+        { key: 'duration', label: 'Duration', cls: 'col-duration', sortable: true  },
+        { key: null,       label: 'Lyrics',   cls: 'col-lyrics'                    },
+        { key: null,       label: 'YouTube',  cls: 'col-youtube'                   },
+        { key: null,       label: '',         cls: 'col-actions'                   },
       ],
     };
 
@@ -579,7 +652,7 @@
       // Library empty state
       if (state.mode === 'library' && activeData().length === 0) {
         const tr = document.createElement('tr');
-        const td = document.createElement('td'); td.colSpan = 7;
+        const td = document.createElement('td'); td.colSpan = 8;
         td.innerHTML = `<div class="lib-empty">
           <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M9 19V6l12-3v13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -596,7 +669,9 @@
       }
 
       const frag = document.createDocumentFragment();
-      slice.forEach(song => {
+      slice.forEach((song, slicePos) => {
+        const globalIdx = (state.page - 1) * PAGE_SIZE + slicePos; // index into activeData()
+        const idx       = state.mode === 'library' ? globalIdx : -1;
         const key = songKey(song.song, song.artist);
         const tr  = document.createElement('tr');
 
@@ -623,16 +698,25 @@
           tdP.appendChild(badge); tr.appendChild(tdP);
 
         } else {
-          /* ── Library columns ── */
+          /* ── Library columns — editable ── */
           const tdR = document.createElement('td'); tdR.className = 'col-rank'; tdR.textContent = song.id; tr.appendChild(tdR);
 
+          // Editable: Song
           const tdS = document.createElement('td'); tdS.className = 'col-song';
-          const sp  = document.createElement('span'); sp.className = 'song-title'; sp.textContent = song.song;
-          tdS.appendChild(sp); tr.appendChild(tdS);
+          tdS.appendChild(makeEditableSpan(idx, 'song', song.song, 'song-title'));
+          tr.appendChild(tdS);
 
-          const tdA  = document.createElement('td'); tdA.className = 'col-artist'; tdA.textContent = song.artist; tr.appendChild(tdA);
-          const tdAl = document.createElement('td'); tdAl.className = 'col-album';  tdAl.textContent = song.album;  tr.appendChild(tdAl);
-          const tdD  = document.createElement('td'); tdD.className = 'col-duration'; tdD.textContent = song.duration; tr.appendChild(tdD);
+          // Editable: Artist
+          const tdA = document.createElement('td'); tdA.className = 'col-artist';
+          tdA.appendChild(makeEditableSpan(idx, 'artist', song.artist));
+          tr.appendChild(tdA);
+
+          // Editable: Album
+          const tdAl = document.createElement('td'); tdAl.className = 'col-album';
+          tdAl.appendChild(makeEditableSpan(idx, 'album', song.album));
+          tr.appendChild(tdAl);
+
+          const tdD = document.createElement('td'); tdD.className = 'col-duration'; tdD.textContent = song.duration; tr.appendChild(tdD);
         }
 
         /* ── Shared: Lyrics + YouTube ── */
@@ -648,6 +732,17 @@
         const sk  = document.createElement('div'); sk.className = 'yt-skeleton'; sk.setAttribute('aria-label', 'Loading YouTube thumbnail');
         tdY.appendChild(sk); tr.appendChild(tdY);
 
+        // Delete button — library only
+        if (state.mode === 'library') {
+          const tdDel = document.createElement('td'); tdDel.className = 'col-actions';
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn-delete';
+          delBtn.setAttribute('aria-label', `Remove ${song.song} from library`);
+          delBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M2 3.5h9M5 3.5V2.5h3v1M4.5 3.5l.5 7M6.5 3.5v7M8.5 3.5l-.5 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+          delBtn.addEventListener('click', () => deleteLibrarySong(idx));
+          tdDel.appendChild(delBtn); tr.appendChild(tdDel);
+        }
+
         frag.appendChild(tr);
       });
 
@@ -659,6 +754,118 @@
 
       renderPagination();
       applyStoredYt(slice);
+    }
+
+    /* ── INLINE EDITING ─────────────────────────────────── */
+
+    // idx is the index into state.libData (global, not page-local)
+    function makeEditableSpan(idx, field, value, extraClass = '') {
+      const span = document.createElement('span');
+      span.className = ['editable', extraClass].filter(Boolean).join(' ');
+      span.textContent = value;
+      span.title = 'Click to edit';
+      span.setAttribute('role', 'button');
+      span.setAttribute('tabindex', '0');
+      span.addEventListener('click',   () => startEdit(span, idx, field));
+      span.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(span, idx, field); } });
+      return span;
+    }
+
+    function startEdit(span, idx, field) {
+      // Already editing this cell
+      if (span.querySelector('.edit-input')) return;
+
+      const original = state.libData[idx][field];
+      const wrapper  = span.parentElement; // the <td>
+
+      // Replace span content with an input
+      span.innerHTML = '';
+      const input = document.createElement('input');
+      input.type      = 'text';
+      input.className = 'edit-input';
+      input.value     = original;
+      span.appendChild(input);
+
+      const hint = document.createElement('p');
+      hint.className   = 'edit-hint';
+      hint.innerHTML   = '<kbd>Enter</kbd> save · <kbd>Esc</kbd> cancel';
+      span.appendChild(hint);
+
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const newVal = input.value.trim();
+        if (newVal && newVal !== original) {
+          state.libData[idx][field] = newVal;
+          saveLibrary(state.libData);
+          // If song or artist changed, invalidate the YT cache entry so it re-fetches
+          if (field === 'song' || field === 'artist') {
+            const key = songKey(original, field === 'artist' ? state.libData[idx].song : state.libData[idx].artist);
+            delete ytStore[key];
+          }
+        }
+        // Restore span with (possibly updated) value
+        span.innerHTML = '';
+        span.textContent = state.libData[idx][field];
+        span.addEventListener('click',   () => startEdit(span, idx, field));
+        span.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(span, idx, field); } });
+        // Re-fetch YT if name changed
+        if ((field === 'song' || field === 'artist') && newVal !== original) {
+          ytFetch(state.libData, 'library', 'library');
+        }
+      };
+
+      const cancel = () => {
+        span.innerHTML = '';
+        span.textContent = original;
+        span.addEventListener('click',   () => startEdit(span, idx, field));
+        span.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(span, idx, field); } });
+      };
+
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+      });
+      input.addEventListener('blur', commit);
+    }
+
+    /* ── DELETE ROW ─────────────────────────────────────── */
+    function deleteLibrarySong(idx) {
+      state.libData.splice(idx, 1);
+      saveLibrary(state.libData);
+      updateLibBadge();
+      // Keep current page unless it's now beyond the last page
+      const maxPage = Math.max(1, Math.ceil(state.libData.length / PAGE_SIZE));
+      if (state.page > maxPage) state.page = maxPage;
+      renderTable();
+    }
+
+    /* ── EXPORT CSV ─────────────────────────────────────── */
+    function escapeCSVField(val) {
+      const s = String(val ?? '');
+      // Wrap in quotes if it contains comma, quote, or newline
+      return (s.includes(',') || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    }
+
+    function exportLibraryCSV() {
+      if (!state.libData.length) { alert('Your library is empty — nothing to export.'); return; }
+      const rows = state.libData.map(s =>
+        ['', s.id, s.song, s.artist, s.album, s.date, s.duration]
+          .map(escapeCSVField).join(',')
+      );
+      const csv  = rows.join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `my-library-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     /* ── SORT ───────────────────────────────────────────── */
@@ -806,6 +1013,9 @@
       reader.onerror = () => alert('Failed to read the file. Please try again.');
       reader.readAsText(file);
     });
+
+    // Export CSV
+    $('btn-export').addEventListener('click', exportLibraryCSV);
 
     // Clear library
     $('btn-clear').addEventListener('click', () => {
