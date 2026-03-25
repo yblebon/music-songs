@@ -435,10 +435,12 @@
       renderHeaders();
       renderTable();
 
+      // Always (re)start a fetch for the mode we just entered so thumbnails are guaranteed.
+      // ytFetch is a no-op if all results are already in ytStore.
       if (mode === 'library' && state.libData.length) {
-        if (ytAbortController) ytAbortController.abort();
-        ytAbortController = new AbortController();
-        fetchAllYouTubeThumbnails(state.libData, 'library', ytAbortController);
+        ytFetch(state.libData, 'library', 'library');
+      } else if (mode === 'chart' && state.currentChartDate) {
+        ytFetch(state.data, state.currentChartDate, 'chart');
       }
     }
 
@@ -660,7 +662,14 @@
     }
 
     /* ── SORT ───────────────────────────────────────────── */
-    let ytAbortController = null;
+    // Separate controllers per mode so chart and library fetches never cancel each other
+    const ytControllers = { chart: null, library: null };
+
+    function ytFetch(songs, cacheDate, mode) {
+      if (ytControllers[mode]) ytControllers[mode].abort();
+      ytControllers[mode] = new AbortController();
+      fetchAllYouTubeThumbnails(songs, cacheDate, ytControllers[mode]);
+    }
 
     function sortData(key) {
       state.sortDir = (state.sortKey === key) ? state.sortDir * -1 : ASC;
@@ -690,10 +699,8 @@
 
       renderTable();
 
-      if (ytAbortController) ytAbortController.abort();
-      ytAbortController = new AbortController();
       const cacheDate = state.mode === 'chart' ? state.currentChartDate : 'library';
-      if (cacheDate) fetchAllYouTubeThumbnails(activeData(), cacheDate, ytAbortController);
+      if (cacheDate) ytFetch(activeData(), cacheDate, state.mode);
     }
 
     /* ── FETCH CHART DATA ───────────────────────────────── */
@@ -745,8 +752,7 @@
         renderHeaders();
         renderTable();
 
-        ytAbortController = new AbortController();
-        fetchAllYouTubeThumbnails(state.data, date, ytAbortController);
+        ytFetch(state.data, date, 'chart');
 
       } catch (err) {
         console.error('Chart fetch error:', err);
@@ -793,9 +799,7 @@
           alert(`✓ Added ${added} song${added === 1 ? '' : 's'} to your library.`);
           if (state.mode === 'library') {
             renderTable();
-            if (ytAbortController) ytAbortController.abort();
-            ytAbortController = new AbortController();
-            fetchAllYouTubeThumbnails(state.libData, 'library', ytAbortController);
+            ytFetch(state.libData, 'library', 'library');
           }
         }
       };
