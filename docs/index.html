@@ -653,7 +653,18 @@
     async function fetchOneYtResult(song, artist, signal) {
       const url = `${YT_SEARCH}?part=snippet&q=${encodeURIComponent(artist + ' - ' + song)}&type=video&maxResults=1&key=${YT_KEY}`;
       const res = await fetch(url, { signal });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // Detect quota exhaustion — throw so the caller can stop all further requests
+        if (res.status === 403) {
+          const body = await res.json().catch(() => ({}));
+          if (body?.error?.errors?.[0]?.reason === 'quotaExceeded') {
+            const err = new Error('YouTube API quota exceeded');
+            err.quotaExceeded = true;
+            throw err;
+          }
+        }
+        return null; // other HTTP errors → treat as "no result", don't cache
+      }
       const data = await res.json();
       const item = data.items?.[0];
       if (!item) return null;
@@ -688,24 +699,43 @@
       return div;
     }
 
+    // Process songs in small concurrent batches to avoid hammering the API quota.
+    // Stops immediately on quota exhaustion rather than wasting remaining quota.
     async function fetchAllYouTubeThumbnails(songs, date, abortController) {
-      const cache = loadYtCache(date);
-      let cacheUpdated = false;
-      await Promise.allSettled(songs.map(async song => {
-        const key = songKey(song.song, song.artist);
-        if (ytStore[key] !== undefined) { applyYtResult(key, ytStore[key]); return; }
-        if (cache[key]) { ytStore[key] = cache[key]; applyYtResult(key, cache[key]); return; }
-        try {
-          const result = await fetchOneYtResult(song.song, song.artist, abortController.signal);
-          if (abortController.signal.aborted) return;
-          ytStore[key] = result ?? null;
-          applyYtResult(key, result);
-          if (result) { cache[key] = result; cacheUpdated = true; }
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-          ytStore[key] = null; applyYtResult(key, null);
-        }
-      }));
+      const cache        = loadYtCache(date);
+      let   cacheUpdated = false;
+      let   quotaHit     = false;
+      const BATCH        = 5;
+
+      for (let i = 0; i < songs.length; i += BATCH) {
+        if (abortController.signal.aborted || quotaHit) break;
+
+        await Promise.allSettled(
+          songs.slice(i, i + BATCH).map(async song => {
+            if (quotaHit || abortController.signal.aborted) return;
+            const key = songKey(song.song, song.artist);
+
+            // Serve from memory store first
+            if (ytStore[key] !== undefined) { applyYtResult(key, ytStore[key]); return; }
+            // Then session cache
+            if (cache[key]) { ytStore[key] = cache[key]; applyYtResult(key, cache[key]); return; }
+
+            try {
+              const result = await fetchOneYtResult(song.song, song.artist, abortController.signal);
+              if (abortController.signal.aborted) return;
+              // Only cache genuine "no result" nulls, not error nulls
+              ytStore[key] = result ?? null;
+              applyYtResult(key, result);
+              if (result) { cache[key] = result; cacheUpdated = true; }
+            } catch (err) {
+              if (err.name === 'AbortError') return;
+              if (err.quotaExceeded) { quotaHit = true; return; } // stop all fetches
+              // Transient network error: don't cache, allow retry next render
+            }
+          })
+        );
+      }
+
       if (cacheUpdated) saveYtCache(date, cache);
     }
 
@@ -753,12 +783,24 @@
     }
 
     /* ── SEARCH ─────────────────────────────────────────── */
+    // Safely highlight matched text using DOM nodes (no innerHTML with raw strings)
     function highlight(text, query) {
       if (!query) return document.createTextNode(text);
-      const re   = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-      const span = document.createElement('span');
-      span.innerHTML = String(text).replace(re, '<mark>$1</mark>');
-      return span;
+      const q   = query.trim();
+      const re  = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      const frag = document.createDocumentFragment();
+      let   last = 0;
+      let   m;
+      re.lastIndex = 0;
+      while ((m = re.exec(text)) !== null) {
+        if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        const mark = document.createElement('mark');
+        mark.textContent = m[0];
+        frag.appendChild(mark);
+        last = m.index + m[0].length;
+      }
+      if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+      return frag;
     }
 
     function runSearch(query) {
@@ -797,7 +839,7 @@
 
       renderHeaders();
       renderTable();
-      ytFetch(state.searchResults, 'search', 'chart'); // reuse chart controller for search
+      ytFetch(state.searchResults, 'search', 'search'); // dedicated search controller
     }
 
     /* ── RENDER ─────────────────────────────────────────── */
@@ -941,7 +983,17 @@
 
     /* ── INLINE EDITING ─────────────────────────────────── */
 
-    // idx is the index into state.libData (global, not page-local)
+    // Attach (or re-attach) edit handlers to a span, removing old ones first.
+    // We store handler refs on the element so they can be cleanly removed.
+    function attachEditHandlers(span, idx, field) {
+      if (span._editClick)   span.removeEventListener('click',   span._editClick);
+      if (span._editKeydown) span.removeEventListener('keydown', span._editKeydown);
+      span._editClick   = () => startEdit(span, idx, field);
+      span._editKeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(span, idx, field); } };
+      span.addEventListener('click',   span._editClick);
+      span.addEventListener('keydown', span._editKeydown);
+    }
+
     function makeEditableSpan(idx, field, value, extraClass = '') {
       const span = document.createElement('span');
       span.className = ['editable', extraClass].filter(Boolean).join(' ');
@@ -949,19 +1001,19 @@
       span.title = 'Click to edit';
       span.setAttribute('role', 'button');
       span.setAttribute('tabindex', '0');
-      span.addEventListener('click',   () => startEdit(span, idx, field));
-      span.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(span, idx, field); } });
+      attachEditHandlers(span, idx, field);
       return span;
     }
 
     function startEdit(span, idx, field) {
-      // Already editing this cell
-      if (span.querySelector('.edit-input')) return;
+      if (span.querySelector('.edit-input')) return; // already editing
 
       const original = state.libData[idx][field];
-      const wrapper  = span.parentElement; // the <td>
 
-      // Replace span content with an input
+      // Detach span listeners while input is active — prevents space bubbling up
+      if (span._editClick)   span.removeEventListener('click',   span._editClick);
+      if (span._editKeydown) span.removeEventListener('keydown', span._editKeydown);
+
       span.innerHTML = '';
       const input = document.createElement('input');
       input.type      = 'text';
@@ -970,43 +1022,50 @@
       span.appendChild(input);
 
       const hint = document.createElement('p');
-      hint.className   = 'edit-hint';
-      hint.innerHTML   = '<kbd>Enter</kbd> save · <kbd>Esc</kbd> cancel';
+      hint.className = 'edit-hint';
+      hint.innerHTML = '<kbd>Enter</kbd> save · <kbd>Esc</kbd> cancel';
       span.appendChild(hint);
 
       input.focus();
       input.select();
 
+      // Guard prevents double-fire: Enter triggers blur which would call commit again
+      let committed = false;
+
       const commit = () => {
+        if (committed) return;
+        committed = true;
         const newVal = input.value.trim();
         if (newVal && newVal !== original) {
           state.libData[idx][field] = newVal;
           saveLibrary(state.libData);
-          // If song or artist changed, invalidate the YT cache entry so it re-fetches
+          // Invalidate the YT store entry so it re-fetches with the new name
           if (field === 'song' || field === 'artist') {
-            const key = songKey(original, field === 'artist' ? state.libData[idx].song : state.libData[idx].artist);
-            delete ytStore[key];
+            const oldKey = field === 'song'
+              ? songKey(original,              state.libData[idx].artist)
+              : songKey(state.libData[idx].song, original);
+            delete ytStore[oldKey];
           }
         }
-        // Restore span with (possibly updated) value
         span.innerHTML = '';
         span.textContent = state.libData[idx][field];
-        span.addEventListener('click',   () => startEdit(span, idx, field));
-        span.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(span, idx, field); } });
-        // Re-fetch YT if name changed
+        attachEditHandlers(span, idx, field); // re-attach cleanly
         if ((field === 'song' || field === 'artist') && newVal !== original) {
           ytFetch(state.libData, 'library', 'library');
         }
       };
 
       const cancel = () => {
+        if (committed) return;
+        committed = true;
         span.innerHTML = '';
         span.textContent = original;
-        span.addEventListener('click',   () => startEdit(span, idx, field));
-        span.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(span, idx, field); } });
+        attachEditHandlers(span, idx, field);
       };
 
       input.addEventListener('keydown', e => {
+        // FIX: stopPropagation prevents space/enter bubbling to the span's listener
+        e.stopPropagation();
         if (e.key === 'Enter')  { e.preventDefault(); commit(); }
         if (e.key === 'Escape') { e.preventDefault(); cancel(); }
       });
@@ -1052,8 +1111,8 @@
     }
 
     /* ── SORT ───────────────────────────────────────────── */
-    // Separate controllers per mode so chart and library fetches never cancel each other
-    const ytControllers = { chart: null, library: null };
+    // Separate controllers per mode so modes never cancel each other's fetches
+    const ytControllers = { chart: null, library: null, search: null };
 
     function ytFetch(songs, cacheDate, mode) {
       if (ytControllers[mode]) ytControllers[mode].abort();
@@ -1089,8 +1148,13 @@
 
       renderTable();
 
-      const cacheDate = state.mode === 'chart' ? state.currentChartDate : 'library';
-      if (cacheDate) ytFetch(activeData(), cacheDate, state.mode);
+      const cacheDate  = state.mode === 'chart'  ? state.currentChartDate
+                       : state.mode === 'search' ? 'search'
+                       : 'library';
+      const controller = state.mode === 'search' ? 'search'
+                       : state.mode === 'library' ? 'library'
+                       : 'chart';
+      if (cacheDate) ytFetch(activeData(), cacheDate, controller);
     }
 
     /* ── FETCH CHART DATA ───────────────────────────────── */
