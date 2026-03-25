@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hot 100 — Weekly Chart</title>
+  <title>Music &amp; Songs</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
@@ -41,15 +41,80 @@
 
     header {
       position: relative; z-index: 1;
-      padding: 3.5rem 2rem 2.5rem;
+      padding: 3rem 2rem 2.5rem;
       border-bottom: 1px solid var(--border);
-      display: flex; flex-direction: column; align-items: center; gap: .6rem; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: .75rem; text-align: center;
       background: radial-gradient(ellipse 70% 200px at 50% -40px, rgba(240,192,64,.08) 0%, transparent 70%);
     }
     .header-eyebrow { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
-    h1 { font-family: var(--font-display); font-size: clamp(3rem, 8vw, 6.5rem); letter-spacing: .04em; line-height: 1; color: var(--text); }
+    h1 { font-family: var(--font-display); font-size: clamp(2.8rem, 7vw, 5.5rem); letter-spacing: .04em; line-height: 1; color: var(--text); }
     h1 span { color: var(--gold); }
     .header-date { font-family: var(--font-mono); font-size: .72rem; color: var(--muted); letter-spacing: .12em; }
+
+    /* ── SEARCH BAR ──────────────────────────────────────── */
+    .search-wrap {
+      position: relative;
+      width: 100%; max-width: 520px;
+      margin-top: .25rem;
+    }
+    .search-icon {
+      position: absolute; left: .95rem; top: 50%; transform: translateY(-50%);
+      color: var(--muted); pointer-events: none;
+      transition: color .2s var(--ease);
+    }
+    .search-input {
+      width: 100%;
+      padding: .72rem 2.6rem .72rem 2.7rem;
+      font-family: var(--font-body); font-size: .9rem;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border-hi);
+      border-radius: 40px;
+      outline: none;
+      transition: border-color .2s var(--ease), box-shadow .2s var(--ease), background .2s var(--ease);
+      caret-color: var(--gold);
+    }
+    .search-input::placeholder { color: var(--muted); }
+    .search-input:focus {
+      border-color: rgba(240,192,64,.55);
+      box-shadow: 0 0 0 3px rgba(240,192,64,.1);
+      background: #16161a;
+    }
+    .search-wrap:focus-within .search-icon { color: var(--gold); }
+    .search-clear {
+      position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: .2rem; border-radius: 50%;
+      display: none; align-items: center; justify-content: center;
+      transition: color .15s var(--ease), background .15s var(--ease);
+    }
+    .search-clear:hover { color: var(--text); background: rgba(255,255,255,.08); }
+    .search-clear.visible { display: flex; }
+    .search-meta {
+      font-family: var(--font-mono); font-size: .65rem; letter-spacing: .08em;
+      color: var(--muted); margin-top: .15rem;
+      display: none;
+    }
+    .search-meta.visible { display: block; }
+    .search-meta strong { color: var(--gold); }
+
+    /* ── SOURCE BADGE ────────────────────────────────────── */
+    .source-badge {
+      display: inline-flex; align-items: center;
+      font-family: var(--font-mono); font-size: .6rem; letter-spacing: .06em;
+      text-transform: uppercase; border-radius: 3px;
+      padding: .2rem .5rem; white-space: nowrap;
+    }
+    .source-badge.hot100  { background: rgba(240,192,64,.12); color: var(--gold);    border: 1px solid rgba(240,192,64,.3); }
+    .source-badge.library { background: rgba(61,214,140,.1);  color: #3dd68c;        border: 1px solid rgba(61,214,140,.28); }
+
+    /* highlight matched text */
+    mark {
+      background: rgba(240,192,64,.28);
+      color: var(--text);
+      border-radius: 2px;
+      padding: 0 .1em;
+    }
 
     .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 6rem; }
 
@@ -195,6 +260,7 @@
     .btn-clear:hover { color: var(--red); border-color: rgba(232,68,90,.4); background: rgba(232,68,90,.06); }
 
     /* ── LIBRARY COLUMNS ─────────────────────────────────── */
+    .col-source { width: 8rem; text-align: center; }
     .col-album { width: 20%; font-size: .83rem; color: var(--muted); }
     .col-duration { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); text-align: center; width: 6rem; }
     .col-actions { width: 2.5rem; min-width: 2.5rem; text-align: center; padding: .5rem .4rem; }
@@ -281,9 +347,30 @@
 <body>
 
   <header>
-    <p class="header-eyebrow">Billboard</p>
-    <h1>HOT <span>100</span></h1>
+    <p class="header-eyebrow">Music &amp; Songs</p>
+    <h1>MUSIC &amp; <span>SONGS</span></h1>
     <p class="header-date" id="chart-date">Loading chart…</p>
+    <div class="search-wrap" role="search">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+        <circle cx="6.5" cy="6.5" r="5.25" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M10.5 10.5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <input
+        type="search"
+        id="search-input"
+        class="search-input"
+        placeholder="Search songs, artists, albums…"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Search across Hot 100 and My Library"
+      />
+      <button class="search-clear" id="search-clear" aria-label="Clear search">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <p class="search-meta" id="search-meta"></p>
   </header>
 
   <div class="container">
@@ -344,7 +431,7 @@
   </div>
 
   <footer>
-    <p class="footer-copy">© <span id="copy-year"></span> Hot 100 Chart Viewer</p>
+    <p class="footer-copy">© <span id="copy-year"></span> Music &amp; Songs</p>
     <p class="footer-source">
       Data: <a href="https://www.billboard.com/charts/hot-100/" target="_blank" rel="noopener noreferrer">Billboard Hot 100</a>
       · Lyrics: <a href="https://genius.com" target="_blank" rel="noopener noreferrer">Genius</a>
@@ -365,11 +452,14 @@
     const state = {
       data:             [],        // Billboard chart rows
       libData:          [],        // Imported CSV songs
-      mode:             'chart',   // 'chart' | 'library'
+      mode:             'chart',   // 'chart' | 'library' | 'search'
+      prevMode:         'chart',   // mode to return to when search is cleared
       sortKey:          'this_week',
       sortDir:          ASC,
       currentChartDate: null,
       page:             1,
+      searchQuery:      '',        // current search string
+      searchResults:    [],        // [{...song, _source:'chart'|'library'}, ...]
     };
 
     /* ── DOM ────────────────────────────────────────────── */
@@ -461,6 +551,13 @@
         { key: null,       label: 'YouTube',  cls: 'col-youtube'                   },
         { key: null,       label: '',         cls: 'col-actions'                   },
       ],
+      search: [
+        { key: null,   label: 'Song',    cls: 'col-song'    },
+        { key: null,   label: 'Artist',  cls: 'col-artist'  },
+        { key: null,   label: 'Source',  cls: 'col-source'  },
+        { key: null,   label: 'Lyrics',  cls: 'col-lyrics'  },
+        { key: null,   label: 'YouTube', cls: 'col-youtube' },
+      ],
     };
 
     const NUMERIC_KEYS = {
@@ -491,8 +588,17 @@
 
     /* ── MODE SWITCH ────────────────────────────────────── */
     function switchMode(mode) {
+      // If user clicks a tab while in search mode, clear the search first
+      if (state.mode === 'search') {
+        $('search-input').value = '';
+        $('search-clear').classList.remove('visible');
+        $('search-meta').classList.remove('visible');
+        state.searchQuery   = '';
+        state.searchResults = [];
+      }
       if (mode === state.mode) return;
       state.mode    = mode;
+      state.prevMode = mode;
       state.page    = 1;
       state.sortKey = mode === 'chart' ? 'this_week' : 'id';
       state.sortDir = ASC;
@@ -611,7 +717,9 @@
     }
 
     /* ── PAGINATION ─────────────────────────────────────── */
-    const activeData = () => state.mode === 'chart' ? state.data : state.libData;
+    const activeData = () => state.mode === 'search' ? state.searchResults
+                           : state.mode === 'library' ? state.libData
+                           : state.data;
     const totalPages = () => Math.ceil(activeData().length / PAGE_SIZE);
     const pageSlice  = () => { const d = activeData(); return d.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE); };
 
@@ -644,6 +752,54 @@
       document.querySelector('.table-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    /* ── SEARCH ─────────────────────────────────────────── */
+    function highlight(text, query) {
+      if (!query) return document.createTextNode(text);
+      const re   = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      const span = document.createElement('span');
+      span.innerHTML = String(text).replace(re, '<mark>$1</mark>');
+      return span;
+    }
+
+    function runSearch(query) {
+      state.searchQuery = query;
+      const q = query.trim().toLowerCase();
+      if (!q) {
+        state.searchResults = [];
+        state.mode = state.prevMode;
+        state.page = 1;
+        $('search-clear').classList.remove('visible');
+        $('search-meta').classList.remove('visible');
+        renderHeaders();
+        renderTable();
+        // Restore YT fetches for the current tab
+        if (state.mode === 'library') ytFetch(state.libData, 'library', 'library');
+        else if (state.currentChartDate) ytFetch(state.data, state.currentChartDate, 'chart');
+        return;
+      }
+
+      $('search-clear').classList.add('visible');
+
+      const matches = (val) => String(val || '').toLowerCase().includes(q);
+      const fromChart   = state.data.map(s => ({ ...s, _source: 'chart' }))
+                            .filter(s => matches(s.song) || matches(s.artist));
+      const fromLibrary = state.libData.map(s => ({ ...s, _source: 'library' }))
+                            .filter(s => matches(s.song) || matches(s.artist) || matches(s.album));
+
+      state.searchResults = [...fromChart, ...fromLibrary];
+      state.prevMode = state.mode !== 'search' ? state.mode : state.prevMode;
+      state.mode = 'search';
+      state.page = 1;
+
+      const meta = $('search-meta');
+      meta.classList.add('visible');
+      meta.innerHTML = `<strong>${state.searchResults.length}</strong> result${state.searchResults.length !== 1 ? 's' : ''} for "${query.trim()}"`;
+
+      renderHeaders();
+      renderTable();
+      ytFetch(state.searchResults, 'search', 'chart'); // reuse chart controller for search
+    }
+
     /* ── RENDER ─────────────────────────────────────────── */
     function renderTable() {
       const slice = pageSlice();
@@ -668,10 +824,33 @@
         return;
       }
 
+      // Search empty state
+      if (state.mode === 'search' && activeData().length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan = 5;
+        td.innerHTML = `<div class="lib-empty">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="7.25" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M16.5 16.5l4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <p class="lib-empty-title">No results</p>
+          <p class="lib-empty-sub">No songs matched your search across Hot 100 or your library.</p>
+        </div>`;
+        tr.appendChild(td); chartBody.appendChild(tr);
+        resultCount.textContent = '0 results';
+        renderPagination();
+        return;
+      }
+
       const frag = document.createDocumentFragment();
       slice.forEach((song, slicePos) => {
-        const globalIdx = (state.page - 1) * PAGE_SIZE + slicePos; // index into activeData()
-        const idx       = state.mode === 'library' ? globalIdx : -1;
+        const globalIdx = (state.page - 1) * PAGE_SIZE + slicePos;
+        // For library editing: find the real index in state.libData
+        const libIdx = state.mode === 'library' ? globalIdx
+                     : state.mode === 'search' && song._source === 'library'
+                       ? state.libData.findIndex(s => s.song === song.song && s.artist === song.artist)
+                       : -1;
         const key = songKey(song.song, song.artist);
         const tr  = document.createElement('tr');
 
@@ -679,44 +858,47 @@
           /* ── Chart columns ── */
           const rank    = parseInt(song.this_week, 10);
           const peakPos = parseInt(song.peak_position, 10);
-
           const tdR = document.createElement('td');
           tdR.className = 'col-rank' + (rank===1?' rank-1':rank===2?' rank-2':rank===3?' rank-3':'');
           tdR.textContent = rank; tr.appendChild(tdR);
-
           const tdS = document.createElement('td'); tdS.className = 'col-song';
           const sp  = document.createElement('span'); sp.className = 'song-title'; sp.textContent = song.song;
           tdS.appendChild(sp); tr.appendChild(tdS);
-
           const tdA = document.createElement('td'); tdA.className = 'col-artist'; tdA.textContent = song.artist; tr.appendChild(tdA);
           const tdW = document.createElement('td'); tdW.className = 'col-weeks';  tdW.textContent = song.weeks_on_chart; tr.appendChild(tdW);
-
-          const tdP  = document.createElement('td'); tdP.className = 'col-peak';
+          const tdP = document.createElement('td'); tdP.className = 'col-peak';
           const badge = document.createElement('span');
           badge.className = peakPos===1 ? 'peak-badge peak-1' : 'peak-badge';
           badge.textContent = peakPos===1 ? '★ 1' : peakPos;
           tdP.appendChild(badge); tr.appendChild(tdP);
 
-        } else {
+        } else if (state.mode === 'library') {
           /* ── Library columns — editable ── */
           const tdR = document.createElement('td'); tdR.className = 'col-rank'; tdR.textContent = song.id; tr.appendChild(tdR);
-
-          // Editable: Song
           const tdS = document.createElement('td'); tdS.className = 'col-song';
-          tdS.appendChild(makeEditableSpan(idx, 'song', song.song, 'song-title'));
-          tr.appendChild(tdS);
-
-          // Editable: Artist
+          tdS.appendChild(makeEditableSpan(libIdx, 'song', song.song, 'song-title')); tr.appendChild(tdS);
           const tdA = document.createElement('td'); tdA.className = 'col-artist';
-          tdA.appendChild(makeEditableSpan(idx, 'artist', song.artist));
+          tdA.appendChild(makeEditableSpan(libIdx, 'artist', song.artist)); tr.appendChild(tdA);
+          const tdAl = document.createElement('td'); tdAl.className = 'col-album';
+          tdAl.appendChild(makeEditableSpan(libIdx, 'album', song.album)); tr.appendChild(tdAl);
+          const tdD = document.createElement('td'); tdD.className = 'col-duration'; tdD.textContent = song.duration; tr.appendChild(tdD);
+
+        } else {
+          /* ── Search result columns (song + artist highlighted, source badge) ── */
+          const tdS = document.createElement('td'); tdS.className = 'col-song';
+          const sp  = document.createElement('span'); sp.className = 'song-title';
+          sp.appendChild(highlight(song.song, state.searchQuery));
+          tdS.appendChild(sp); tr.appendChild(tdS);
+
+          const tdA = document.createElement('td'); tdA.className = 'col-artist';
+          tdA.appendChild(highlight(song.artist, state.searchQuery));
           tr.appendChild(tdA);
 
-          // Editable: Album
-          const tdAl = document.createElement('td'); tdAl.className = 'col-album';
-          tdAl.appendChild(makeEditableSpan(idx, 'album', song.album));
-          tr.appendChild(tdAl);
-
-          const tdD = document.createElement('td'); tdD.className = 'col-duration'; tdD.textContent = song.duration; tr.appendChild(tdD);
+          const tdSrc = document.createElement('td'); tdSrc.className = 'col-source';
+          const srcBadge = document.createElement('span');
+          srcBadge.className = `source-badge ${song._source === 'chart' ? 'hot100' : 'library'}`;
+          srcBadge.textContent = song._source === 'chart' ? 'Hot 100' : 'Library';
+          tdSrc.appendChild(srcBadge); tr.appendChild(tdSrc);
         }
 
         /* ── Shared: Lyrics + YouTube ── */
@@ -732,14 +914,14 @@
         const sk  = document.createElement('div'); sk.className = 'yt-skeleton'; sk.setAttribute('aria-label', 'Loading YouTube thumbnail');
         tdY.appendChild(sk); tr.appendChild(tdY);
 
-        // Delete button — library only
+        // Delete button — library tab only (not shown in search results)
         if (state.mode === 'library') {
           const tdDel = document.createElement('td'); tdDel.className = 'col-actions';
           const delBtn = document.createElement('button');
           delBtn.className = 'btn-delete';
           delBtn.setAttribute('aria-label', `Remove ${song.song} from library`);
           delBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M2 3.5h9M5 3.5V2.5h3v1M4.5 3.5l.5 7M6.5 3.5v7M8.5 3.5l-.5 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-          delBtn.addEventListener('click', () => deleteLibrarySong(idx));
+          delBtn.addEventListener('click', () => deleteLibrarySong(libIdx));
           tdDel.appendChild(delBtn); tr.appendChild(tdDel);
         }
 
@@ -750,7 +932,8 @@
 
       const start = (state.page - 1) * PAGE_SIZE + 1;
       const end   = Math.min(state.page * PAGE_SIZE, activeData().length);
-      resultCount.innerHTML = `Showing <strong>${start}–${end}</strong> of ${activeData().length} tracks`;
+      const label = state.mode === 'search' ? 'results' : 'tracks';
+      resultCount.innerHTML = `Showing <strong>${start}–${end}</strong> of ${activeData().length} ${label}`;
 
       renderPagination();
       applyStoredYt(slice);
@@ -971,6 +1154,18 @@
     }
 
     /* ── EVENT LISTENERS ────────────────────────────────── */
+
+    // Search
+    let searchTimer = null;
+    $('search-input').addEventListener('input', e => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => runSearch(e.target.value), 180);
+    });
+    $('search-clear').addEventListener('click', () => {
+      $('search-input').value = '';
+      $('search-input').focus();
+      runSearch('');
+    });
 
     // Sort — event delegation on thead so it works after header re-renders
     document.querySelector('#chart-table thead').addEventListener('click', e => {
