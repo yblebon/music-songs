@@ -650,27 +650,92 @@
 
     const ytStore = {};  // in-memory: songKey → {videoId,thumb} | null
 
+    // Possible API-level block reasons that mean "stop all fetches, nothing will succeed"
+    const YT_FATAL_REASONS = new Set([
+      'quotaExceeded', 'dailyLimitExceeded',
+      'keyInvalid', 'ipRefererBlocked', 'accessNotConfigured',
+      'forbidden', 'notFound',
+    ]);
+
+    // Show a one-time dismissible warning when the YouTube API is blocked
+    let ytWarnShown = false;
+    function showYtWarning(reason) {
+      if (ytWarnShown) return;
+      ytWarnShown = true;
+      const bar = document.createElement('div');
+      bar.id = 'yt-warn';
+      bar.style.cssText = [
+        'position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);',
+        'max-width:560px;width:calc(100% - 2rem);',
+        'display:flex;align-items:flex-start;gap:.75rem;',
+        'padding:.85rem 1rem;border-radius:6px;z-index:999;',
+        'background:#1a1510;border:1px solid rgba(240,192,64,.35);',
+        'font-family:var(--font-mono);font-size:.68rem;color:#c8a830;',
+        'line-height:1.6;box-shadow:0 4px 24px rgba(0,0,0,.5);',
+      ].join('');
+      const messages = {
+        quotaExceeded:      'YouTube API daily quota exceeded. Thumbnails will resume tomorrow.',
+        dailyLimitExceeded: 'YouTube API daily limit reached. Thumbnails will resume tomorrow.',
+        keyInvalid:         'YouTube API key is invalid. Check your key in Google Cloud Console.',
+        ipRefererBlocked:   'YouTube API key has referrer/IP restrictions that block this page. Remove HTTP referrer restrictions in Google Cloud Console → Credentials.',
+        accessNotConfigured:'YouTube Data API v3 is not enabled. Enable it in Google Cloud Console → APIs.',
+        default:            `YouTube API blocked (${reason || 'unknown reason'}). Check your API key in Google Cloud Console.`,
+      };
+      const msg = messages[reason] || messages.default;
+      bar.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="flex-shrink:0;margin-top:.1rem" aria-hidden="true">
+          <circle cx="7.5" cy="7.5" r="6.5" stroke="#f0c040" stroke-width="1.3"/>
+          <path d="M7.5 4.5v4M7.5 10v1" stroke="#f0c040" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <span style="flex:1">
+          <strong style="color:#f0c040">YouTube unavailable</strong> — ${msg}
+          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" style="color:#f0c040;margin-left:.4em">Open Console ↗</a>
+        </span>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:#c8a830;font-size:1rem;line-height:1;padding:0" aria-label="Dismiss">×</button>`;
+      document.body.appendChild(bar);
+    }
+
+    // Replace every visible skeleton cell with a placeholder immediately
+    function flushSkeletons() {
+      document.querySelectorAll('td[data-yt-key] .yt-skeleton').forEach(sk => {
+        sk.parentElement.innerHTML = '';
+        sk.parentElement.appendChild(makeNoThumbPlaceholder());
+      });
+    }
+
     async function fetchOneYtResult(song, artist, signal) {
       const url = `${YT_SEARCH}?part=snippet&q=${encodeURIComponent(artist + ' - ' + song)}&type=video&maxResults=1&key=${YT_KEY}`;
-      const res = await fetch(url, { signal });
+      // Use no-referrer-when-downgrade so the Referer header is sent when on HTTPS
+      // (fully removing it with 'no-referrer' still gets blocked by Google's referrer checks)
+      const res = await fetch(url, { signal, referrerPolicy: 'no-referrer-when-downgrade' });
+
       if (!res.ok) {
-        // Detect quota exhaustion — throw so the caller can stop all further requests
-        if (res.status === 403) {
-          const body = await res.json().catch(() => ({}));
-          if (body?.error?.errors?.[0]?.reason === 'quotaExceeded') {
-            const err = new Error('YouTube API quota exceeded');
-            err.quotaExceeded = true;
-            throw err;
-          }
+        if (res.status === 403 || res.status === 400) {
+          // Parse the error body to extract the specific reason
+          let reason = 'forbidden';
+          try {
+            const body = await res.json();
+            reason = body?.error?.errors?.[0]?.reason ?? reason;
+          } catch { /* non-JSON body → keep default reason */ }
+
+          const err = new Error(`YouTube API blocked: ${reason}`);
+          err.ytBlocked = true;
+          err.ytReason  = reason;
+          throw err;
         }
-        return null; // other HTTP errors → treat as "no result", don't cache
+        // Other HTTP errors (5xx, 429): transient — don't cache, allow retry
+        return null;
       }
+
       const data = await res.json();
       const item = data.items?.[0];
       if (!item) return null;
       return {
         videoId: item.id.videoId,
-        thumb:   item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? null,
+        thumb:   item.snippet.thumbnails?.medium?.url
+               ?? item.snippet.thumbnails?.mqdefault?.url
+               ?? item.snippet.thumbnails?.default?.url
+               ?? null,
       };
     }
 
@@ -699,38 +764,43 @@
       return div;
     }
 
-    // Process songs in small concurrent batches to avoid hammering the API quota.
-    // Stops immediately on quota exhaustion rather than wasting remaining quota.
+    // Process songs in batches of 5 to stay within rate limits.
+    // On any API-level block (403/400), stops all fetches immediately,
+    // flushes all remaining skeletons, and shows a diagnostic banner.
     async function fetchAllYouTubeThumbnails(songs, date, abortController) {
       const cache        = loadYtCache(date);
       let   cacheUpdated = false;
-      let   quotaHit     = false;
+      let   apiBlocked   = false;
       const BATCH        = 5;
 
       for (let i = 0; i < songs.length; i += BATCH) {
-        if (abortController.signal.aborted || quotaHit) break;
+        if (abortController.signal.aborted || apiBlocked) break;
 
         await Promise.allSettled(
           songs.slice(i, i + BATCH).map(async song => {
-            if (quotaHit || abortController.signal.aborted) return;
+            if (apiBlocked || abortController.signal.aborted) return;
             const key = songKey(song.song, song.artist);
 
-            // Serve from memory store first
+            // 1. In-memory store (fastest)
             if (ytStore[key] !== undefined) { applyYtResult(key, ytStore[key]); return; }
-            // Then session cache
+            // 2. Session cache (survives re-renders within same tab)
             if (cache[key]) { ytStore[key] = cache[key]; applyYtResult(key, cache[key]); return; }
 
             try {
               const result = await fetchOneYtResult(song.song, song.artist, abortController.signal);
               if (abortController.signal.aborted) return;
-              // Only cache genuine "no result" nulls, not error nulls
-              ytStore[key] = result ?? null;
+              ytStore[key] = result ?? null; // cache genuine nulls (video not found)
               applyYtResult(key, result);
               if (result) { cache[key] = result; cacheUpdated = true; }
             } catch (err) {
               if (err.name === 'AbortError') return;
-              if (err.quotaExceeded) { quotaHit = true; return; } // stop all fetches
-              // Transient network error: don't cache, allow retry next render
+              if (err.ytBlocked) {
+                apiBlocked = true;
+                showYtWarning(err.ytReason);
+                flushSkeletons(); // clear all frozen skeleton cells immediately
+                return;
+              }
+              // Transient error: don't cache, allow retry on next render
             }
           })
         );
