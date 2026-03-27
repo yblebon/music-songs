@@ -445,9 +445,20 @@
     const PAGE_SIZE = 25;
     const LS_KEY    = 'hot100_library_v1';
 
-    const YT_KEY    = 'AIzaSyC3hP0pR6ErOSBmRgyHwb8i7ZG4HB8ZZug';
     const YT_SEARCH = 'https://www.googleapis.com/youtube/v3/search';
 
+    // API key is fetched once at startup from a secrets endpoint
+    let YT_KEY = null;
+    async function loadYtKey() {
+      try {
+        const res = await fetch('https://static-secrets.vercel.app/go/music-songs/api-key');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        YT_KEY = json.value ?? null;
+      } catch (e) {
+        console.warn('Could not load YouTube API key:', e);
+      }
+    }
     /* ── STATE ──────────────────────────────────────────── */
     const state = {
       data:             [],        // Billboard chart rows
@@ -506,13 +517,14 @@
       return fields;
     }
 
-    // CSV columns: [screenshot, id, title, artist, album, date, duration]
+    // CSV columns: [screenshot, id, title, artist, album, date, duration, youtube_url?]
     function csvRowToSong(fields) {
       if (fields.length < 7) return null;
-      const [, id, song, artist, album, date, duration] = fields;
+      const [, id, song, artist, album, date, duration, youtubeUrl = ''] = fields;
       if (!song || !artist) return null;
       return { id: id.trim(), song: song.trim(), artist: artist.trim(),
-               album: album.trim(), date: date.trim(), duration: duration.trim() };
+               album: album.trim(), date: date.trim(), duration: duration.trim(),
+               youtubeUrl: youtubeUrl.trim() };
     }
 
     function parseCSV(text) {
@@ -650,6 +662,43 @@
 
     const ytStore = {};  // in-memory: songKey → {videoId,thumb} | null
 
+    /**
+     * Build a YT result object directly from a YouTube URL — no API call, no quota used.
+     * Supports watch?v=, youtu.be/, and shorts/ URLs.
+     * Thumbnail is fetched from YouTube's image CDN.
+     */
+    function ytResultFromUrl(url) {
+      if (!url) return null;
+      try {
+        const u = new URL(url);
+        let videoId = null;
+        if (u.hostname === 'youtu.be') {
+          videoId = u.pathname.slice(1).split('?')[0];
+        } else if (u.hostname.includes('youtube.com')) {
+          videoId = u.searchParams.get('v')
+                 || (u.pathname.startsWith('/shorts/') ? u.pathname.split('/shorts/')[1].split('?')[0] : null);
+        }
+        if (!videoId || videoId.length < 5) return null;
+        // mqdefault = 320×180, hqdefault = 480×360; mqdefault is closest to our 120×68 display
+        return { videoId, thumb: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` };
+      } catch { return null; }
+    }
+
+    /**
+     * Extract a YouTube URL from a {videoId} result and write it back to
+     * the matching library song so future exports include it.
+     */
+    function persistYouTubeUrl(song, result) {
+      if (!result?.videoId) return;
+      const url = `https://www.youtube.com/watch?v=${result.videoId}`;
+      // Find the song in libData by identity and update it in-place
+      const libSong = state.libData.find(s => s.song === song.song && s.artist === song.artist);
+      if (libSong && !libSong.youtubeUrl) {
+        libSong.youtubeUrl = url;
+        saveLibrary(state.libData);
+      }
+    }
+
     // Possible API-level block reasons that mean "stop all fetches, nothing will succeed"
     const YT_FATAL_REASONS = new Set([
       'quotaExceeded', 'dailyLimitExceeded',
@@ -704,6 +753,7 @@
     }
 
     async function fetchOneYtResult(song, artist, signal) {
+      if (!YT_KEY) return null; // key not yet loaded or failed to load
       const url = `${YT_SEARCH}?part=snippet&q=${encodeURIComponent(artist + ' - ' + song)}&type=video&maxResults=1&key=${YT_KEY}`;
       // Use no-referrer-when-downgrade so the Referer header is sent when on HTTPS
       // (fully removing it with 'no-referrer' still gets blocked by Google's referrer checks)
@@ -765,6 +815,7 @@
     }
 
     // Process songs in batches of 5 to stay within rate limits.
+    // Songs with a youtubeUrl skip the API entirely — thumbnail is built from CDN.
     // On any API-level block (403/400), stops all fetches immediately,
     // flushes all remaining skeletons, and shows a diagnostic banner.
     async function fetchAllYouTubeThumbnails(songs, date, abortController) {
@@ -783,21 +834,35 @@
 
             // 1. In-memory store (fastest)
             if (ytStore[key] !== undefined) { applyYtResult(key, ytStore[key]); return; }
-            // 2. Session cache (survives re-renders within same tab)
+            // 2. Session cache
             if (cache[key]) { ytStore[key] = cache[key]; applyYtResult(key, cache[key]); return; }
+            // 3. YouTube URL embedded in the song (from CSV import) — zero quota
+            const fromUrl = ytResultFromUrl(song.youtubeUrl);
+            if (fromUrl) {
+              ytStore[key] = fromUrl;
+              cache[key]   = fromUrl;
+              cacheUpdated = true;
+              applyYtResult(key, fromUrl);
+              return;
+            }
 
+            // 4. YouTube Data API (costs quota — only reached if no URL was present)
             try {
               const result = await fetchOneYtResult(song.song, song.artist, abortController.signal);
               if (abortController.signal.aborted) return;
-              ytStore[key] = result ?? null; // cache genuine nulls (video not found)
+              ytStore[key] = result ?? null;
               applyYtResult(key, result);
-              if (result) { cache[key] = result; cacheUpdated = true; }
+              if (result) {
+                cache[key]   = result;
+                cacheUpdated = true;
+                persistYouTubeUrl(song, result); // write URL back so next export includes it
+              }
             } catch (err) {
               if (err.name === 'AbortError') return;
               if (err.ytBlocked) {
                 apiBlocked = true;
                 showYtWarning(err.ytReason);
-                flushSkeletons(); // clear all frozen skeleton cells immediately
+                flushSkeletons();
                 return;
               }
               // Transient error: don't cache, allow retry on next render
@@ -1115,6 +1180,7 @@
               ? songKey(original,              state.libData[idx].artist)
               : songKey(state.libData[idx].song, original);
             delete ytStore[oldKey];
+            state.libData[idx].youtubeUrl = ''; // clear stale URL — will re-fetch
           }
         }
         span.innerHTML = '';
@@ -1165,7 +1231,7 @@
     function exportLibraryCSV() {
       if (!state.libData.length) { alert('Your library is empty — nothing to export.'); return; }
       const rows = state.libData.map(s =>
-        ['', s.id, s.song, s.artist, s.album, s.date, s.duration]
+        ['', s.id, s.song, s.artist, s.album, s.date, s.duration, s.youtubeUrl || '']
           .map(escapeCSVField).join(',')
       );
       const csv  = rows.join('\r\n');
@@ -1357,9 +1423,10 @@
     });
 
     /* ── INIT ───────────────────────────────────────────── */
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       state.libData = loadLibrary();
       updateLibBadge();
+      await loadYtKey();      // fetch API key before any YouTube calls
       fetchChartData();
     });
   </script>
