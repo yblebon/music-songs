@@ -451,7 +451,7 @@
     let YT_KEY = null;
     async function loadYtKey() {
       try {
-        const res = await fetch('https://static-secrets.vercel.app/go/youtube/api-key');
+        const res = await fetch('https://static-secrets.vercel.app/go/music-songs/api-key');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         YT_KEY = json.value ?? null;
