@@ -324,11 +324,79 @@
     }
     .btn-delete:hover { color: var(--red); border-color: rgba(232,68,90,.35); background: rgba(232,68,90,.06); }
     .btn-delete:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
-    tr:not(:hover) .btn-delete { opacity: 0; pointer-events: none; }
+    tr:not(:hover):not(.row-selected) .btn-delete { opacity: 0; pointer-events: none; }
 
     /* Export button */
     .btn-export { background: transparent; color: var(--muted); border: 1px solid var(--border-hi); }
     .btn-export:hover { color: var(--green, #3dd68c); border-color: rgba(61,214,140,.4); background: rgba(61,214,140,.06); }
+
+    /* ── ROW CHECKBOX ────────────────────────────────────── */
+    .col-check { width: 2.5rem; min-width: 2.5rem; text-align: center; padding: .5rem .4rem; }
+
+    .row-cb {
+      width: 1rem; height: 1rem; cursor: pointer;
+      accent-color: var(--gold);
+      vertical-align: middle;
+    }
+
+    /* Selected row highlight */
+    .row-selected { background: rgba(240,192,64,.05) !important; }
+    .row-selected td { border-bottom-color: rgba(240,192,64,.15); }
+
+    /* ── FLOATING SELECTION BAR ──────────────────────────── */
+    #yt-selection-bar {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      display: none; align-items: center; gap: .75rem;
+      padding: .7rem .9rem .7rem 1.1rem;
+      background: #1a1a20; border: 1px solid var(--border-hi);
+      border-radius: 40px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04);
+      z-index: 50;
+      white-space: nowrap;
+      animation: barIn .2s var(--ease);
+    }
+    #yt-selection-bar.visible { display: flex; }
+    @keyframes barIn { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+
+    .bar-count {
+      font-family: var(--font-mono); font-size: .7rem; letter-spacing: .06em;
+      color: var(--muted);
+    }
+    .bar-count strong { color: var(--gold); }
+
+    .bar-divider { width: 1px; height: 1.2rem; background: var(--border-hi); flex-shrink: 0; }
+
+    .btn-bar {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-family: var(--font-mono); font-size: .65rem; letter-spacing: .08em; text-transform: uppercase;
+      padding: .45rem .9rem; border-radius: 20px; cursor: pointer; border: none;
+      transition: background .15s var(--ease), color .15s var(--ease);
+    }
+    .btn-bar-yt {
+      background: rgba(255,0,0,.15); color: #ff6060; border: 1px solid rgba(255,60,60,.3);
+    }
+    .btn-bar-yt:hover { background: rgba(255,0,0,.25); color: #ff8080; border-color: rgba(255,60,60,.5); }
+    .btn-bar-yt:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-bar-desel {
+      background: transparent; color: var(--muted); border: 1px solid var(--border-hi);
+    }
+    .btn-bar-desel:hover { color: var(--text); background: rgba(255,255,255,.05); }
+
+    /* Progress label inside bar while fetching */
+    .bar-progress {
+      font-family: var(--font-mono); font-size: .65rem; color: var(--gold);
+      letter-spacing: .05em; display: none;
+    }
+    .bar-progress.visible { display: block; }
+
+    /* Per-cell YouTube status dot */
+    .yt-has-video::before {
+      content: '';
+      display: block; width: 5px; height: 5px;
+      background: #3dd68c; border-radius: 50%;
+      position: absolute; top: .35rem; right: .35rem;
+    }
+    td.col-youtube { position: relative; }
 
     /* ── LIBRARY EMPTY STATE ─────────────────────────────── */
     .lib-empty { display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 4rem 2rem; text-align: center; }
@@ -430,6 +498,22 @@
 
   </div>
 
+  <!-- Floating selection action bar (library multi-select) -->
+  <div id="yt-selection-bar" role="toolbar" aria-label="Selection actions">
+    <span class="bar-count"><strong id="bar-sel-count">0</strong> selected</span>
+    <div class="bar-divider"></div>
+    <button class="btn-bar btn-bar-yt" id="btn-bar-yt">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <rect x="1" y="2.5" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+        <path d="M4.5 5l3 1.5-3 1.5V5z" fill="currentColor"/>
+      </svg>
+      Search YouTube
+    </button>
+    <span class="bar-progress" id="bar-progress"></span>
+    <div class="bar-divider"></div>
+    <button class="btn-bar btn-bar-desel" id="btn-bar-desel">Deselect all</button>
+  </div>
+
   <footer>
     <p class="footer-copy">© <span id="copy-year"></span> Music &amp; Songs</p>
     <p class="footer-source">
@@ -451,7 +535,7 @@
     let YT_KEY = null;
     async function loadYtKey() {
       try {
-        const res = await fetch('https://static-secrets.vercel.app/go/music-songs/api-key');
+        const res = await fetch('https://static-secrets.vercel.app/go/youtube/api-key');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         YT_KEY = json.value ?? null;
@@ -461,16 +545,17 @@
     }
     /* ── STATE ──────────────────────────────────────────── */
     const state = {
-      data:             [],        // Billboard chart rows
-      libData:          [],        // Imported CSV songs
-      mode:             'chart',   // 'chart' | 'library' | 'search'
-      prevMode:         'chart',   // mode to return to when search is cleared
+      data:             [],
+      libData:          [],
+      mode:             'chart',
+      prevMode:         'chart',
       sortKey:          'this_week',
       sortDir:          ASC,
       currentChartDate: null,
       page:             1,
-      searchQuery:      '',        // current search string
-      searchResults:    [],        // [{...song, _source:'chart'|'library'}, ...]
+      searchQuery:      '',
+      searchResults:    [],
+      selectedRows:     new Set(), // Set of libData indices selected in library mode
     };
 
     /* ── DOM ────────────────────────────────────────────── */
@@ -554,6 +639,7 @@
         { key: null,             label: 'YouTube',  cls: 'col-youtube'             },
       ],
       library: [
+        { key: null,       label: '',         cls: 'col-check',    check: true     },
         { key: 'id',       label: '#',        cls: 'col-rank',     sortable: true  },
         { key: 'song',     label: 'Song',     cls: 'col-song',     sortable: true  },
         { key: 'artist',   label: 'Artist',   cls: 'col-artist',   sortable: true  },
@@ -584,7 +670,14 @@
         const th = document.createElement('th');
         th.scope     = 'col';
         th.className = h.cls + (h.sortable ? ' sortable' : '');
-        if (h.key && h.sortable) {
+        if (h.check) {
+          // Select-all checkbox
+          const cb = document.createElement('input');
+          cb.type  = 'checkbox'; cb.className = 'row-cb'; cb.id = 'cb-all';
+          cb.setAttribute('aria-label', 'Select all rows');
+          cb.addEventListener('change', () => toggleSelectAll(cb.checked));
+          th.appendChild(cb);
+        } else if (h.key && h.sortable) {
           th.dataset.key = h.key;
           th.tabIndex    = 0;
           const isActive = h.key === state.sortKey;
@@ -623,15 +716,22 @@
 
       $('import-wrap').classList.toggle('visible', mode === 'library');
 
+      // Clear row selection when leaving library
+      if (mode !== 'library') {
+        state.selectedRows.clear();
+        updateSelectionBar();
+      }
+
       renderHeaders();
       renderTable();
 
-      // Always (re)start a fetch for the mode we just entered so thumbnails are guaranteed.
-      // ytFetch is a no-op if all results are already in ytStore.
-      if (mode === 'library' && state.libData.length) {
-        ytFetch(state.libData, 'library', 'library');
-      } else if (mode === 'chart' && state.currentChartDate) {
+      // Only auto-fetch thumbnails for the chart (quota-free after cache warms).
+      // Library thumbnails load from youtubeUrl (CDN) or require manual selection.
+      if (mode === 'chart' && state.currentChartDate) {
         ytFetch(state.data, state.currentChartDate, 'chart');
+      } else if (mode === 'library') {
+        // Load CDN-based thumbnails (songs with youtubeUrl) without using quota
+        loadCachedLibraryThumbnails();
       }
     }
 
@@ -950,7 +1050,7 @@
         renderHeaders();
         renderTable();
         // Restore YT fetches for the current tab
-        if (state.mode === 'library') ytFetch(state.libData, 'library', 'library');
+        if (state.mode === 'library') loadCachedLibraryThumbnails();
         else if (state.currentChartDate) ytFetch(state.data, state.currentChartDate, 'chart');
         return;
       }
@@ -985,7 +1085,7 @@
       // Library empty state
       if (state.mode === 'library' && activeData().length === 0) {
         const tr = document.createElement('tr');
-        const td = document.createElement('td'); td.colSpan = 8;
+        const td = document.createElement('td'); td.colSpan = 9; // +1 for checkbox col
         td.innerHTML = `<div class="lib-empty">
           <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M9 19V6l12-3v13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1051,6 +1151,17 @@
 
         } else if (state.mode === 'library') {
           /* ── Library columns — editable ── */
+          // Checkbox cell
+          const tdCk = document.createElement('td'); tdCk.className = 'col-check';
+          const cb   = document.createElement('input');
+          cb.type  = 'checkbox'; cb.className = 'row-cb';
+          cb.checked = state.selectedRows.has(libIdx);
+          cb.setAttribute('aria-label', `Select ${song.song}`);
+          cb.addEventListener('change', () => toggleRowSelection(libIdx, cb.checked, tr));
+          tdCk.appendChild(cb); tr.appendChild(tdCk);
+
+          if (state.selectedRows.has(libIdx)) tr.classList.add('row-selected');
+
           const tdR = document.createElement('td'); tdR.className = 'col-rank'; tdR.textContent = song.id; tr.appendChild(tdR);
           const tdS = document.createElement('td'); tdS.className = 'col-song';
           tdS.appendChild(makeEditableSpan(libIdx, 'song', song.song, 'song-title')); tr.appendChild(tdS);
@@ -1114,6 +1225,12 @@
 
       renderPagination();
       applyStoredYt(slice);
+
+      if (state.mode === 'library') {
+        updateSelectionBar();
+        updateSelectAllCheckbox();
+        loadCachedLibraryThumbnails();
+      }
     }
 
     /* ── INLINE EDITING ─────────────────────────────────── */
@@ -1246,6 +1363,164 @@
       URL.revokeObjectURL(url);
     }
 
+    /* ── SELECTION ──────────────────────────────────────── */
+    function toggleRowSelection(libIdx, selected, tr) {
+      if (selected) {
+        state.selectedRows.add(libIdx);
+        tr.classList.add('row-selected');
+      } else {
+        state.selectedRows.delete(libIdx);
+        tr.classList.remove('row-selected');
+      }
+      updateSelectionBar();
+      updateSelectAllCheckbox();
+    }
+
+    function toggleSelectAll(selectAll) {
+      // Only operates on the currently visible page slice
+      const slice = pageSlice();
+      slice.forEach((song, slicePos) => {
+        const globalIdx = (state.page - 1) * PAGE_SIZE + slicePos;
+        if (selectAll) state.selectedRows.add(globalIdx);
+        else           state.selectedRows.delete(globalIdx);
+      });
+      // Re-render rows to reflect new checkbox states
+      renderTable();
+      updateSelectionBar();
+    }
+
+    function updateSelectAllCheckbox() {
+      const cb = document.getElementById('cb-all');
+      if (!cb) return;
+      const slice     = pageSlice();
+      const pageIdxs  = slice.map((_, i) => (state.page - 1) * PAGE_SIZE + i);
+      const allChecked = pageIdxs.length > 0 && pageIdxs.every(i => state.selectedRows.has(i));
+      const someChecked = pageIdxs.some(i => state.selectedRows.has(i));
+      cb.checked       = allChecked;
+      cb.indeterminate = !allChecked && someChecked;
+    }
+
+    function updateSelectionBar() {
+      const bar   = $('yt-selection-bar');
+      const count = state.selectedRows.size;
+      if (count === 0 || state.mode !== 'library') {
+        bar.classList.remove('visible');
+        return;
+      }
+      bar.classList.add('visible');
+      $('bar-sel-count').textContent = count;
+      // Show how many of the selected still need a YouTube search
+      const needsSearch = [...state.selectedRows].filter(i => {
+        const s = state.libData[i];
+        if (!s) return false;
+        const k = songKey(s.song, s.artist);
+        return !s.youtubeUrl && ytStore[k] === undefined;
+      }).length;
+      const ytBtn = $('btn-bar-yt');
+      ytBtn.disabled = needsSearch === 0;
+      ytBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <rect x="1" y="2.5" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M4.5 5l3 1.5-3 1.5V5z" fill="currentColor"/>
+        </svg>
+        ${needsSearch > 0 ? `Search YouTube (${needsSearch})` : 'All have thumbnails'}`;
+    }
+
+    /**
+     * Load thumbnails for library songs that already have a youtubeUrl —
+     * reads from CDN/ytStore, zero API quota. Called when entering library tab.
+     */
+    function loadCachedLibraryThumbnails() {
+      if (!state.libData.length) return;
+      const cache = loadYtCache('library');
+      let cacheUpdated = false;
+      state.libData.forEach(song => {
+        const key = songKey(song.song, song.artist);
+        if (ytStore[key] !== undefined) { applyYtResult(key, ytStore[key]); return; }
+        if (cache[key])                 { ytStore[key] = cache[key]; applyYtResult(key, cache[key]); return; }
+        const fromUrl = ytResultFromUrl(song.youtubeUrl);
+        if (fromUrl) {
+          ytStore[key]  = fromUrl;
+          cache[key]    = fromUrl;
+          cacheUpdated  = true;
+          applyYtResult(key, fromUrl);
+        }
+        // Songs without a URL stay as skeleton — user must manually trigger search
+      });
+      if (cacheUpdated) saveYtCache('library', cache);
+    }
+
+    /**
+     * Manual YouTube search for the selected library rows.
+     * Only fetches songs that don't already have a URL/thumbnail.
+     * Updates the selection bar progress as each result arrives.
+     */
+    async function manualYtSearch() {
+      const indices = [...state.selectedRows].filter(i => {
+        const s = state.libData[i];
+        if (!s) return false;
+        const k = songKey(s.song, s.artist);
+        return !s.youtubeUrl && ytStore[k] === undefined;
+      });
+      if (!indices.length) return;
+
+      const ytBtn    = $('btn-bar-yt');
+      const progress = $('bar-progress');
+      ytBtn.disabled = true;
+      progress.classList.add('visible');
+
+      let done = 0;
+      progress.textContent = `0 / ${indices.length}`;
+
+      // Abort any existing library controller
+      if (ytControllers.library) ytControllers.library.abort();
+      ytControllers.library = new AbortController();
+      const signal = ytControllers.library.signal;
+
+      const cache = loadYtCache('library');
+      let cacheUpdated = false;
+
+      for (let i = 0; i < indices.length; i++) {
+        if (signal.aborted) break;
+        const libIdx = indices[i];
+        const song   = state.libData[libIdx];
+        if (!song) continue;
+        const key = songKey(song.song, song.artist);
+
+        try {
+          const result = await fetchOneYtResult(song.song, song.artist, signal);
+          if (signal.aborted) break;
+
+          if (result) {
+            ytStore[key]       = result;
+            cache[key]         = result;
+            cacheUpdated       = true;
+            song.youtubeUrl    = `https://www.youtube.com/watch?v=${result.videoId}`;
+            saveLibrary(state.libData);
+          } else {
+            ytStore[key] = null; // no video found — don't retry
+          }
+          applyYtResult(key, result);
+        } catch (err) {
+          if (err.name === 'AbortError') break;
+          if (err.ytBlocked) {
+            showYtWarning(err.ytReason);
+            flushSkeletons();
+            break;
+          }
+        }
+
+        done++;
+        progress.textContent = `${done} / ${indices.length}`;
+      }
+
+      if (cacheUpdated) saveYtCache('library', cache);
+
+      progress.classList.remove('visible');
+      progress.textContent = '';
+      updateSelectionBar(); // refresh "needs search" count
+    }
+
     /* ── SORT ───────────────────────────────────────────── */
     // Separate controllers per mode so modes never cancel each other's fetches
     const ytControllers = { chart: null, library: null, search: null };
@@ -1367,6 +1642,14 @@
       runSearch('');
     });
 
+    // YouTube selection bar
+    $('btn-bar-yt').addEventListener('click', manualYtSearch);
+    $('btn-bar-desel').addEventListener('click', () => {
+      state.selectedRows.clear();
+      updateSelectionBar();
+      renderTable(); // re-render to uncheck all rows
+    });
+
     // Sort — event delegation on thead so it works after header re-renders
     document.querySelector('#chart-table thead').addEventListener('click', e => {
       const th = e.target.closest('th.sortable[data-key]');
@@ -1401,7 +1684,7 @@
           alert(`✓ Added ${added} song${added === 1 ? '' : 's'} to your library.`);
           if (state.mode === 'library') {
             renderTable();
-            ytFetch(state.libData, 'library', 'library');
+            loadCachedLibraryThumbnails(); // CDN only — no quota
           }
         }
       };
